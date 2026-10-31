@@ -108,27 +108,47 @@ class classlist_chain(Chain):
         self.classes = read_csv(FILE_DIR + '课程单.csv')
 
     def prepare(self):
+        """确定"今天"的课表：周末且久未登录时询问一次，必要时生成临时课表。
+
+        只有确实拿到可用课表后才写 last_login —— 否则中途退出（关掉询问框、
+        结束进程）会把"今天已经问过"记下来，当天就再也拿不到课表了。
+        """
         global class_wordday
         appData = self.parent['appData']
         last_login_dt = datetime.strptime(appData.last_login, '%Y%m%d')
         print(f'delta:{(last_login_dt - today).days}')
 
+        ok = False
         if weekday not in range(5):
-            if (last_login_dt - today).days < -1:
-                appData.last_login = today.strftime('%Y%m%d')
+            # 今天的课表文件不存在时，即使"今天问过"也要重新问，
+            # 这样上次中途退出留下的空状态能自动恢复
+            need_ask = (last_login_dt - today).days < -1 or not os.path.exists(classlist_path)
+            if need_ask:
                 if os.path.exists(classlist_path):
                     answer = QMessageBox.question(
                         self.widget, '提示', '已有临时课表，是否使用？',
                         QMessageBox.Yes | QMessageBox.No)
-                    if answer == QMessageBox.No:
-                        self._set_tmp_classlist()
+                    ok = answer == QMessageBox.Yes
+                    if not ok:
+                        ok = self._set_tmp_classlist()
                 else:
-                    self._set_tmp_classlist()
+                    ok = self._set_tmp_classlist()
+            else:
+                ok = True
         else:
             class_wordday = wordday
             self.classlist_model[class_wordday].to_csv(classlist_path, index=False)
+            ok = True
 
-    def _set_tmp_classlist(self):
+        if ok:
+            appData.last_login = today.strftime('%Y%m%d')
+
+    def _set_tmp_classlist(self) -> bool:
+        """询问今天按星期几上课，返回是否成功得到一份可用课表。
+
+        用户直接关掉询问框、或在临时课表编辑器里取消时返回 False，
+        并且不写任何文件，留待下次启动重新询问，而不是塞一张空表。
+        """
         global class_wordday, classday
         choices = list(range(1, 6)) + ['设置临时课表']
         classday = questionForChoice(
@@ -141,27 +161,28 @@ class classlist_chain(Chain):
             if n_rows <= 0:
                 n_rows = 8
             model = PandasQItemModel({wordday: [None for _ in range(n_rows)]})
-            model._df.to_csv(classlist_path, index=False)
 
             editor = TableEditor(
                 model, accept_simple=False, savepath=classlist_path,
                 title='设置临时课表', show_size=f'{n_rows}x1',
                 row_ops=True)
-            # 原来无论 accept 还是 reject 都会覆盖一次，导致用户编辑丢失，
-            # 现在只在"取消"时回退到周模板
-            if editor.exec_() != QDialog.Accepted:
-                self.classlist_model[class_wordday].to_csv(
-                    classlist_path, index=False)
-        elif classday is not None:
+            # 只有"完成"才写盘；"取消"不再覆盖成空表，也不再回退写周模板
+            if editor.exec_() == QDialog.Accepted:
+                return True
+            print('[classlist] 取消了临时课表设置，今日课表留空')
+            return False
+
+        if classday is not None:
             classday = int(classday) - 1
             class_wordday = weekday2word(classday)
+            if class_wordday not in self.classlist_model._df.columns:
+                print(f'[classlist] 周模板里没有 "{class_wordday}"，今日课表留空')
+                return False
             self.classlist_model[class_wordday].to_csv(classlist_path, index=False)
-        else:
-            n_rows = self.classlist_model._df.shape[0]
-            if n_rows <= 0:
-                n_rows = 8
-            DataFrame({wordday: [None for _ in range(n_rows)]}).to_csv(
-                classlist_path, index=False)
+            return True
+
+        print('[classlist] 用户关闭了课表询问，今日课表留空')
+        return False
 
     def input(self, widget):
         pass
