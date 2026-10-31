@@ -988,8 +988,9 @@ class GeneralWidget(SettingsWidgetBase):
         layout.addRow(danger_title)
 
         danger_desc = QLabel(
-            '删除本机保存的全部班级数据（名单、课表、值日、消息与照片、倒计时、设置），'
+            '删除本机保存的班级数据（名单、课表、值日、消息与照片、倒计时、班级名称），'
             '然后重新进入首次使用向导。\n'
+            '应用链接与存储方式会保留。\n'
             '删除前会自动备份到数据目录下的 backup\\ 里。')
         danger_desc.setWordWrap(True)
         danger_desc.setStyleSheet('font-size: 10pt; color: #666666;')
@@ -1011,9 +1012,10 @@ class GeneralWidget(SettingsWidgetBase):
         ans = QMessageBox.question(
             self, '删除全部数据',
             '将删除的内容：\n'
-            '    · 学生名单、课程表、值日表、应用链接\n'
+            '    · 学生名单、课程表、值日表\n'
             '    · 消息正文与班级照片\n'
-            '    · 倒计时与所有设置\n\n'
+            '    · 倒计时、班级名称等设置\n\n'
+            '会保留：应用链接（这台电脑的配置）与存储方式。\n'
             '会先自动备份到数据目录的 backup\\ 下。\n\n'
             '删除完成后程序会退出，需要你手动重新打开，才会进入首次使用向导。\n\n'
             '确定继续吗？',

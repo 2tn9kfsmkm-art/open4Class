@@ -1,4 +1,4 @@
-"""bootstrap.py 的状态判定、落盘、备份与重置。
+﻿"""bootstrap.py 的状态判定、落盘、备份与重置。
 
 所有用例都传 root=临时目录，完全不碰真实的 %APPDATA%\\ClassManager。
 """
@@ -192,7 +192,8 @@ class TestBackupAndReset:
     def test_reset_clears_data_and_state(self, root):
         self.seed(root)
         bootstrap.reset_all(str(root))
-        assert list((root / "datas").iterdir()) == []
+        # 名单/课表被清掉，但 settings.json（记住存储方式）会保留
+        assert not (root / "datas/名单.csv").exists()
         assert bootstrap.is_initialized(str(root)) is False
 
     def test_reset_clears_messages_by_default(self, root):
@@ -209,3 +210,67 @@ class TestBackupAndReset:
         self.seed(root)
         dest = Path(bootstrap.reset_all(str(root)))
         assert (dest / "datas/名单.csv").read_text(encoding="utf-8").strip() == "name\n张三"
+
+
+class TestResetKeepsApps:
+    """重置默认保留应用链接（那是本机配置，不是班级数据）。"""
+
+    def seed_with_apps(self, root):
+        (root / "datas/应用路径.csv").write_text(
+            "软件链接,path\n浏览器,C:/x.exe\n", encoding="utf-8")
+        (root / "datas/名单.csv").write_text("name\n张三\n", encoding="utf-8")
+        (root / "datas/settings.json").write_text(
+            json.dumps({"storage": "sqlite"}), encoding="utf-8")
+        bootstrap.mark_initialized(str(root))
+
+    def test_apps_survive_by_default(self, root):
+        from data.store import CsvStore
+
+        self.seed_with_apps(root)
+        bootstrap.reset_all(str(root))
+
+        apps = CsvStore(str(root / "datas")).load_apps()
+        assert apps.iloc[0, 0] == "浏览器"
+        assert not (root / "datas/名单.csv").exists()
+
+    def test_apps_can_be_dropped(self, root):
+        self.seed_with_apps(root)
+        bootstrap.reset_all(str(root), keep_apps=False)
+        assert not (root / "datas/应用路径.csv").exists()
+
+    def test_storage_mode_is_preserved(self, root):
+        self.seed_with_apps(root)
+        bootstrap.reset_all(str(root))
+        cfg = json.loads((root / "datas/settings.json").read_text(encoding="utf-8"))
+        assert cfg["storage"] == "sqlite"
+
+    def test_other_settings_are_reset(self, root):
+        (root / "datas/settings.json").write_text(
+            json.dumps({"storage": "csv", "class_short_name": "九班"}),
+            encoding="utf-8")
+        bootstrap.reset_all(str(root))
+        cfg = json.loads((root / "datas/settings.json").read_text(encoding="utf-8"))
+        assert "class_short_name" not in cfg
+
+    def test_sqlite_mode_keeps_apps_in_new_db(self, root):
+        """sqlite 模式下删除的是整个 db，应用链接要写回新建的库。"""
+        from core.models import AppEntry
+        from data.sqlite_repo import SqliteRepository
+
+        db_path = root / "classmanager.db"
+        repo = SqliteRepository(str(db_path))
+        repo.replace_students(["张三"])
+        repo.replace_apps([AppEntry("浏览器", "C:/x.exe")])
+        repo.close()
+
+        (root / "datas/settings.json").write_text(
+            json.dumps({"storage": "sqlite"}), encoding="utf-8")
+
+        bootstrap.reset_all(str(root))
+
+        repo = SqliteRepository(str(db_path))
+        try:
+            assert repo.list_apps()[0].name == "浏览器"
+            assert repo.list_students() == []
+        finally:
+            repo.close()

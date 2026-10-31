@@ -262,17 +262,60 @@ def _clear_dir(path: str, keep_dir: bool = True) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
-def reset_all(root: str | None = None, keep_messages: bool = False) -> str:
-    """清空全部班级数据，回到"首次使用"状态。**会先自动备份**。
+def _read_storage_mode(dirs: dict) -> str:
+    """当前存储方式（从 settings.json 读，缺省 csv）。"""
+    payload = _read_json(dirs['settings'], default={})
+    mode = str((payload or {}).get('storage', 'csv')).lower()
+    return mode if mode in ('csv', 'sqlite') else 'csv'
+
+
+def _collect_apps(dirs: dict, mode: str):
+    """把应用链接取出来（重置后要原样放回）。"""
+    from pandas import DataFrame
+
+    try:
+        from data.sqlite_store import SqliteStore
+        from data.store import APPS_COLUMNS, CsvStore
+
+        if mode == 'sqlite':
+            db_path = os.path.join(dirs['base'], 'classmanager.db')
+            # 库不存在时退回 CSV：settings 说 sqlite 但库还没建的情况也常见
+            if not os.path.exists(db_path):
+                return CsvStore(dirs['datas']).load_apps()
+            store = SqliteStore(db_path)
+        else:
+            store = CsvStore(dirs['datas'])
+        try:
+            return store.load_apps()
+        finally:
+            if mode == 'sqlite':
+                store.close()
+    except Exception:                           # noqa: BLE001
+        from pandas import DataFrame
+        from data.store import APPS_COLUMNS
+        return DataFrame(columns=APPS_COLUMNS)
+
+
+def reset_all(root: str | None = None, keep_messages: bool = False,
+              keep_apps: bool = True) -> str:
+    """清空班级数据，回到"首次使用"状态。**会先自动备份**。
+
+    刻意保留的两样东西：
+    - **应用链接**：那是"这台电脑"的配置（本机绝对路径），换班重配很烦
+    - **存储方式**：否则重置后会悄悄退回 CSV，用户以为数据丢了
 
     Args:
         root: 数据根目录。
         keep_messages: True 时保留 messages/（消息正文与班级照片）。
+        keep_apps: True 时保留应用链接（默认）。
     Returns:
         备份目录路径（调用方应在提示里告诉用户）。
     """
     dirs = _dirs(root)
     backup = backup_all(root)
+
+    mode = _read_storage_mode(dirs)
+    apps = _collect_apps(dirs, mode) if keep_apps else None
 
     _clear_dir(dirs['datas'])
     if not keep_messages:
@@ -292,6 +335,25 @@ def reset_all(root: str | None = None, keep_messages: bool = False) -> str:
                 os.remove(db_path)
             except OSError:
                 pass
+
+    # 放回应用链接（CSV 里始终留一份；sqlite 模式再写进新库）
+    if keep_apps and apps is not None and len(apps) > 0:
+        try:
+            from data.store import CsvStore
+            CsvStore(dirs['datas']).save_apps(apps)
+            if mode == 'sqlite':
+                from data.sqlite_store import SqliteStore
+                db_path = os.path.join(dirs['base'], 'classmanager.db')
+                store = SqliteStore(db_path)
+                try:
+                    store.save_apps(apps)
+                finally:
+                    store.close()
+        except Exception as e:                  # noqa: BLE001
+            print(f'[reset] 恢复应用链接失败: {e!r}')
+
+    # 保住存储方式：其余设置交给默认值（班级名、倒计时等重新配）
+    _write_json(dirs['settings'], {'storage': mode})
 
     # 丢掉共享 Store，避免继续持有已删除的数据库连接
     try:
