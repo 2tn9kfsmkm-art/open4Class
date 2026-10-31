@@ -47,7 +47,7 @@ from ondutySpawn import (
 )
 
 PAGE_WIDTH = 900
-PAGE_HEIGHT = 700
+PAGE_HEIGHT = 620
 
 
 # ============================================================
@@ -94,6 +94,10 @@ class _Page(QWidget):
     def collect(self):
         """返回要合并进 wizard.data 的字典。"""
         return {}
+
+    def extra_height(self) -> int:
+        """本页需要比默认窗口额外高出的像素数（默认 0）。"""
+        return 0
 
 
 # ============================================================
@@ -455,8 +459,15 @@ class OndutyPage(_Page):
         self.daily_sb.setEnabled(mode == 0)          # 分组模式下人数由组大小决定
 
         self.group_box.setVisible(is_group)
+        self.wizard.set_extra_height(self.extra_height())
         self._on_group_source_changed()
         self.refresh_preview()
+
+    def extra_height(self) -> int:
+        """分组模式多出一整块「分组设置」，窗口要相应长高，而不是挤压预览。"""
+        if self.mode_cb.currentIndex() != 1:
+            return 0
+        return self.group_box.sizeHint().height() + 12
 
     def _on_group_source_changed(self):
         if self._imported_groups:
@@ -622,8 +633,10 @@ class SetupWizard(QDialog):
         self.summary = None
 
         self.setWindowTitle('首次使用设置')
-        # 高度按内容最挤的一页（值日页分组模式）留出余量。
-        # 不用 setFixedSize：内容超了就会被压扁（按钮曾因此变成一条线）。
+        # 不用 setFixedSize：内容超了会被压扁（按钮曾因此变成一条线）。
+        # 默认高度覆盖大多数页面；个别页面（值日页分组模式）通过
+        # extra_height 请求额外高度，窗口随之长高，而不是去挤压预览。
+        self._extra_height = 0
         self.setMinimumSize(PAGE_WIDTH, PAGE_HEIGHT)
         self.resize(PAGE_WIDTH, PAGE_HEIGHT)
 
@@ -700,10 +713,30 @@ class SetupWizard(QDialog):
         self.next_btn.clicked.connect(self._on_next)
 
     # ---------- 导航 ----------
+    def set_extra_height(self, extra: int):
+        """按当前页内容请求窗口额外高度，并立即应用。"""
+        extra = max(0, int(extra))
+        if extra == self._extra_height:
+            return
+        self._extra_height = extra
+        self._apply_window_size()
+
+    def _apply_window_size(self):
+        max_height = max(PAGE_HEIGHT, self._available_height() - 120)
+        self.resize(PAGE_WIDTH, min(PAGE_HEIGHT + self._extra_height, max_height))
+
+    @staticmethod
+    def _available_height() -> int:
+        """当前屏幕可用高度（单独抽出来，便于测试里替换）。"""
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        return screen.availableGeometry().height() if screen else 1080
+
     def _goto(self, index):
         self.current = index
         self.stack.setCurrentIndex(index)
         self.pages[index].on_enter()
+        self.set_extra_height(self.pages[index].extra_height())
         self._refresh_steps()
         self.back_btn.setEnabled(index > 0)
         self.next_btn.setText('完成' if index == len(self.pages) - 1 else '下一步')

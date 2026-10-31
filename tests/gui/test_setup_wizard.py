@@ -1,10 +1,12 @@
-"""首次使用向导：页面校验与完整走查。
+﻿"""首次使用向导：页面校验与完整走查。
 
 不调用 exec_()，直接驱动 _on_next()，避免模态对话框阻塞测试。
 校验失败的分支只测 page.validate()，不触发 QMessageBox。
 """
 
 from pathlib import Path
+
+import pytest
 
 from pandas import read_csv
 from PyQt5.QtWidgets import QDialog, QTableWidgetItem
@@ -178,3 +180,52 @@ def test_back_navigation_keeps_data(tmp_dir):
     wizard._on_back()
     assert wizard.current == 1
     assert wizard.pages[2].names() == ["张三", "李四"]
+
+
+class TestWindowGrowth:
+    """分组模式要撑高窗口，而不是压缩预览。"""
+
+    @pytest.fixture
+    def big_screen(self, monkeypatch):
+        from SetupWizard import SetupWizard
+        monkeypatch.setattr(SetupWizard, "_available_height", staticmethod(lambda: 1080))
+
+    def test_grows_when_group_mode_selected(self, tmp_dir, big_screen):
+        from SetupWizard import PAGE_HEIGHT
+        wizard = SetupWizard(root=str(tmp_dir))
+        wizard._goto(4)
+        before = wizard.height()
+        assert before == PAGE_HEIGHT
+
+        page = wizard.pages[4]
+        page.mode_cb.setCurrentIndex(1)
+        assert wizard.height() > before
+        assert page.group_box.isVisibleTo(page)
+
+    def test_shrinks_back_on_sequential(self, tmp_dir, big_screen):
+        from SetupWizard import PAGE_HEIGHT
+        wizard = SetupWizard(root=str(tmp_dir))
+        wizard._goto(4)
+        page = wizard.pages[4]
+        page.mode_cb.setCurrentIndex(1)
+        page.mode_cb.setCurrentIndex(0)
+        assert wizard.height() == PAGE_HEIGHT
+
+    def test_no_growth_on_other_pages(self, tmp_dir, big_screen):
+        from SetupWizard import PAGE_HEIGHT
+        wizard = SetupWizard(root=str(tmp_dir))
+        wizard._goto(4)
+        wizard.pages[4].mode_cb.setCurrentIndex(1)
+        wizard._goto(2)
+        assert wizard.height() == PAGE_HEIGHT
+
+    def test_group_mode_does_not_squeeze_preview(self, tmp_dir, big_screen):
+        wizard = SetupWizard(root=str(tmp_dir))
+        wizard._goto(4)
+        page = wizard.pages[4]
+        page.mode_cb.setCurrentIndex(0)
+        seq = page.preview.height()
+        page.mode_cb.setCurrentIndex(1)
+        grouped = page.preview.height()
+        assert grouped >= page.preview.minimumHeight()
+        assert grouped >= seq - 60          # 允许小幅变化，但不该被压到最低
