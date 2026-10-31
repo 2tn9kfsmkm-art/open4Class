@@ -4,6 +4,8 @@ import shutil
 import copy
 from datetime import datetime
 
+from pandas import DataFrame
+
 from tools.PandasQModel import PandasQItemModel
 from tools.num2word import weekday2word
 
@@ -86,6 +88,50 @@ def _init_datas():
             shutil.copyfile(s, d)
 
 _init_datas()
+
+# ---------- 最小数据集：没有 datas/ 时也要能启动 ----------
+CLASS_WEEKDAYS = ['周一', '周二', '周三', '周四', '周五']
+DEFAULT_CLASS_ROWS = 8
+
+
+def ensure_minimal_data(target_dir: str = '') -> list:
+    """补齐"缺了就启动不了"的数据文件，返回本次新建的文件名列表。
+
+    分发包里不带 datas/ 时，课表.csv 与 课程单.csv 会缺失；而
+    classlist_chain.load() 直接 q_read_csv()，文件不在就抛 FileNotFoundError，
+    一路冲到 Main.__init__，表现为双击闪退。这里补出空骨架。
+
+    其余文件各有兜底，不在这里处理：
+    - 名单.csv / 未来值日.csv / 应用路径.csv：对应的 Chain.load 会新建
+    - settings.json：load_user_settings 会新建
+    - data.json：Main.ensure_data_json 会新建
+
+    Args:
+        target_dir: 目标目录，默认 FILE_DIR（测试时可传临时目录）。
+    Returns:
+        本次新建的文件名列表；已存在的不覆盖，重复调用幂等。
+    """
+    directory = target_dir or FILE_DIR
+    os.makedirs(directory, exist_ok=True)
+    created = []
+
+    classlist = os.path.join(directory, '课表.csv')
+    if not os.path.exists(classlist):
+        DataFrame(
+            index=range(DEFAULT_CLASS_ROWS), columns=CLASS_WEEKDAYS,
+        ).to_csv(classlist, index=False, encoding=ENCODING)
+        created.append('课表.csv')
+
+    courses = os.path.join(directory, '课程单.csv')
+    if not os.path.exists(courses):
+        DataFrame(columns=['课程']).to_csv(
+            courses, index=False, encoding=ENCODING)
+        created.append('课程单.csv')
+
+    return created
+
+
+ensure_minimal_data()
 
 # ---------- 下面保持原样 ----------
 ERROR_MODEL = PandasQItemModel(['加载出错'])

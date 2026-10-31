@@ -682,15 +682,29 @@ class CourseEditorWidget(SettingsWidgetBase):
     def _on_import_classlist(self):
         path, _ = QFileDialog.getOpenFileName(
             self, '导入课表', FILE_DIR,
-            '表格文件 (*.csv *.xlsx *.xls);;CSV (*.csv);;Excel (*.xlsx *.xls)')
+            '表格文件 (*.csv *.xlsx);;CSV (*.csv);;Excel (*.xlsx)')
         if not path:
             return
 
         try:
-            if path.lower().endswith(('.xlsx', '.xls')):
+            if path.lower().endswith('.xlsx'):
                 src = pd.read_excel(path)
+            elif path.lower().endswith('.xls'):
+                QMessageBox.warning(
+                    self, '不支持的格式',
+                    '旧版 .xls 需要额外组件。\n'
+                    '请用 Excel 打开后「另存为」.xlsx 或 .csv 再导入。')
+                return
             else:
                 src = pd.read_csv(path)
+        except ImportError:
+            QMessageBox.warning(
+                self, '缺少依赖',
+                '读取 Excel 需要 openpyxl 组件。\n\n'
+                '请在命令行执行：\n'
+                '    python -m pip install openpyxl\n\n'
+                '或把表格另存为 CSV 后再导入。')
+            return
         except Exception as e:
             QMessageBox.warning(self, '读取失败', f'{e!r}')
             return

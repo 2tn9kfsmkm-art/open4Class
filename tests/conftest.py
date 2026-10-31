@@ -14,8 +14,12 @@
 """
 
 import os
+import shutil
 import sys
+import uuid
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -34,3 +38,21 @@ from PyQt5.QtWidgets import QApplication  # noqa: E402
 
 if QApplication.instance() is None:
     QApplication([])
+
+
+@pytest.fixture
+def tmp_dir():
+    """工作区内的临时目录。
+
+    不用 pytest 的 tmp_path，也不用 tempfile.mkdtemp：
+    前者清理时会对目录 chmod，后者建出的目录在受限环境里不可写，
+    都会抛 PermissionError。这里用普通 mkdir 自己造。
+    """
+    root = ROOT / ".test-tmp"
+    root.mkdir(exist_ok=True)
+    path = root / f"case_{uuid.uuid4().hex[:8]}"
+    path.mkdir()
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
