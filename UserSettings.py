@@ -16,6 +16,9 @@ import pandas as pd
 
 import bootstrap
 from data.store import shared_store
+from tools.storage_switch import (
+    LABELS, default_db_path, switch_to_csv, switch_to_sqlite,
+)
 from windows.dropableTableView import (
     dragdropQTableView, QComboBoxDelegate, QNoDelegate,
 )
@@ -950,6 +953,29 @@ class GeneralWidget(SettingsWidgetBase):
         self.reset_btn.clicked.connect(self._load)
         self.save_btn.clicked.connect(self.save)
 
+        # ---------- 数据存储 ----------
+        storage_line = QFrame()
+        storage_line.setFrameShape(QFrame.HLine)
+        storage_line.setStyleSheet('color: #E0E0E0;')
+        layout.addRow(storage_line)
+
+        storage_title = QLabel('数据存储')
+        storage_title.setStyleSheet('font-size: 12pt; font-weight: bold;')
+        layout.addRow(storage_title)
+
+        self.storage_cb = QComboBox()
+        self.storage_cb.addItems(['CSV 文件（默认）', 'SQLite 数据库'])
+        layout.addRow('存储方式：', self.storage_cb)
+
+        self.storage_l = QLabel()
+        self.storage_l.setWordWrap(True)
+        self.storage_l.setStyleSheet('font-size: 10pt; color: #666666;')
+        layout.addRow('', self.storage_l)
+
+        self.storage_btn = QPushButton('切换存储（自动备份并迁移）')
+        layout.addRow('', self.storage_btn)
+        self.storage_btn.clicked.connect(self._on_switch_storage)
+
         # ---------- 危险操作 ----------
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -1037,6 +1063,71 @@ class GeneralWidget(SettingsWidgetBase):
         self.short_le.setText(cfg['class_short_name'])
         self.full_le.setText(cfg['class_full_name'])
         self.school_le.setText(cfg['school_name'])
+        self._refresh_storage_ui()
+
+    def _refresh_storage_ui(self):
+        """把当前存储方式同步到下拉框与说明文字。"""
+        mode = str(load_user_settings().get('storage', 'csv')).lower()
+        if mode not in LABELS:
+            mode = 'csv'
+        self.storage_cb.setCurrentIndex(1 if mode == 'sqlite' else 0)
+        if mode == 'sqlite':
+            self.storage_l.setText(f'当前：SQLite 数据库\n{default_db_path()}')
+        else:
+            self.storage_l.setText(f'当前：CSV 文件\n{FILE_DIR}')
+
+    # ---------- 存储切换 ----------
+    def _on_switch_storage(self):
+        target = 'sqlite' if self.storage_cb.currentIndex() == 1 else 'csv'
+        current = str(load_user_settings().get('storage', 'csv')).lower()
+        if current not in LABELS:
+            current = 'csv'
+
+        if target == current:
+            QMessageBox.information(
+                self, '无需切换', f'当前已经是「{LABELS[target]}」。')
+            return
+
+        ans = QMessageBox.question(
+            self, '切换存储',
+            f'将从「{LABELS[current]}」切换到「{LABELS[target]}」。\n\n'
+            '会先自动备份，再把数据整体迁移过去，不会丢数据。\n'
+            '完成后程序会退出，需要你手动重新打开。\n\n'
+            '确定继续吗？',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+
+        try:
+            if target == 'sqlite':
+                result = switch_to_sqlite(
+                    FILE_DIR, default_db_path(), backup=bootstrap.backup_all)
+            else:
+                result = switch_to_csv(
+                    FILE_DIR, default_db_path(), backup=bootstrap.backup_all)
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.critical(self, '切换失败', f'{e}')
+            return
+
+        cfg = load_user_settings()
+        cfg['storage'] = target
+        save_user_settings(cfg)
+
+        from data.store import reset_shared_store
+        reset_shared_store()
+
+        counts = result.get('counts') or {}
+        detail = '、'.join(f'{k} {v}' for k, v in counts.items() if v)
+        QMessageBox.information(
+            self, '已完成',
+            f'已切换到「{LABELS[target]}」。\n'
+            f'{detail}\n\n'
+            f'备份：{result.get("backup")}\n\n'
+            '请手动重新打开程序。')
+
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def reset(self):
         self._load()

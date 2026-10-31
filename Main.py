@@ -360,6 +360,12 @@ if __name__ == '__main__':
             if not SetupWizard.run():
                 sys.exit(0)
 
+    # 存储自检：settings 里写了 sqlite 但数据库还空着、CSV 有数据时自动补迁移
+    from tools.storage_switch import ensure_storage_ready
+    ready_msg = ensure_storage_ready()
+    if ready_msg:
+        print(ready_msg)
+
     mainwindow = Main()
     mainwindow.showMaximized()
     app.exec_()
