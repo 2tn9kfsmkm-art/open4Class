@@ -4,6 +4,7 @@ __pycache__/
 # 本地环境（每台机器自己生成，不入库）
 .venv/
 .tmp/
+.tmp*/
 .tmpappdata/
 backups/
 
