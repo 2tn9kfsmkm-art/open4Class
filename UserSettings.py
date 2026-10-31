@@ -8,11 +8,13 @@ from PyQt5.QtWidgets import (
     QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QFrame,
     QAbstractItemView, QHeaderView, QComboBox, QSizePolicy, QTextEdit,
+    QInputDialog,
 )
 from PyQt5.QtCore import Qt, QDate, pyqtSignal, QTimer
 from pandas import DataFrame, read_csv
 import pandas as pd
 
+import bootstrap
 from windows.dropableTableView import (
     dragdropQTableView, QComboBoxDelegate, QNoDelegate,
 )
@@ -657,12 +659,16 @@ class CourseEditorWidget(SettingsWidgetBase):
         '周五': ['周五', '星期五', '五', 'fri', 'friday', '周5', '星期5', '5'],
     }
 
-    def _normalize_weekday_columns(self, df):
-        """把任意表格规整为列名 周一~周五、共 5 列。无法识别时返回 None。"""
+    @classmethod
+    def _normalize_weekday_columns(cls, df):
+        """把任意表格规整为列名 周一~周五、共 5 列。无法识别时返回 None。
+
+        做成类方法是为了让首次启动向导也能复用同一套列名识别规则。
+        """
         col_map = {}
         for col in df.columns:
             key = str(col).strip().lower()
-            for wd, aliases in self.WEEKDAY_ALIASES.items():
+            for wd, aliases in cls.WEEKDAY_ALIASES.items():
                 if wd in col_map:
                     continue
                 if key in [a.lower() for a in aliases]:
@@ -670,12 +676,12 @@ class CourseEditorWidget(SettingsWidgetBase):
                     break
         if len(col_map) == 5:
             out = DataFrame()
-            for wd in self.WEEKDAYS:
+            for wd in cls.WEEKDAYS:
                 out[wd] = df[col_map[wd]].tolist()
             return out
         if df.shape[1] >= 5:
             out = df.iloc[:, :5].copy()
-            out.columns = self.WEEKDAYS
+            out.columns = cls.WEEKDAYS
             return out
         return None
 
@@ -941,6 +947,88 @@ class GeneralWidget(SettingsWidgetBase):
 
         self.reset_btn.clicked.connect(self._load)
         self.save_btn.clicked.connect(self.save)
+
+        # ---------- 危险操作 ----------
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet('color: #E0E0E0;')
+        layout.addRow(line)
+
+        danger_title = QLabel('危险操作')
+        danger_title.setStyleSheet(
+            'font-size: 12pt; font-weight: bold; color: #C62828;')
+        layout.addRow(danger_title)
+
+        danger_desc = QLabel(
+            '删除本机保存的全部班级数据（名单、课表、值日、消息与照片、倒计时、设置），'
+            '然后重新进入首次使用向导。\n'
+            '删除前会自动备份到数据目录下的 backup\\ 里。')
+        danger_desc.setWordWrap(True)
+        danger_desc.setStyleSheet('font-size: 10pt; color: #666666;')
+        layout.addRow(danger_desc)
+
+        self.wipe_btn = QPushButton('删除全部数据，重新开始首次使用向导…')
+        self.wipe_btn.setStyleSheet(
+            'background-color: #ffffff; color: #C62828; border: 1px solid #C62828;'
+            'border-radius: 6px; padding: 6px 16px; font-size: 11pt;')
+        layout.addRow('', self.wipe_btn)
+        self.wipe_btn.clicked.connect(self._on_wipe_all)
+
+    # ---------- 危险操作：三重确认 ----------
+    def _on_wipe_all(self):
+        cfg = load_user_settings()
+        short_name = cfg.get('class_short_name', '')
+
+        # 第 1 重：说清楚删什么、留什么
+        ans = QMessageBox.question(
+            self, '删除全部数据',
+            '将删除的内容：\n'
+            '    · 学生名单、课程表、值日表、应用链接\n'
+            '    · 消息正文与班级照片\n'
+            '    · 倒计时与所有设置\n\n'
+            '会先自动备份到数据目录的 backup\\ 下。\n\n'
+            '删除完成后程序会退出，需要你手动重新打开，才会进入首次使用向导。\n\n'
+            '确定继续吗？',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+
+        # 第 2 重：手打班级短名
+        text, ok = QInputDialog.getText(
+            self, '确认删除',
+            f'请输入当前班级短名以确认：\n（{short_name}）')
+        if not ok:
+            return
+        if text.strip() != short_name:
+            QMessageBox.warning(self, '已取消', '输入的班级短名不匹配，未做任何改动。')
+            return
+
+        # 第 3 重：最终确认
+        ans = QMessageBox.question(
+            self, '最后确认',
+            '这是最后一次确认。\n\n'
+            '删除后程序会立即退出，你需要手动重新打开，'
+            '然后会进入「首次使用设置」向导。\n\n'
+            '确定要删除全部数据吗？',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+
+        try:
+            backup = bootstrap.backup_all()
+            bootstrap.reset_all(keep_messages=False)
+        except Exception as e:
+            QMessageBox.critical(self, '删除失败', f'{e}')
+            return
+
+        QMessageBox.information(
+            self, '已完成',
+            f'数据已清空，备份保存在：\n{backup}\n\n'
+            '请手动重新打开程序，届时会进入首次使用设置向导。')
+
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _load(self):
         cfg = load_user_settings()
