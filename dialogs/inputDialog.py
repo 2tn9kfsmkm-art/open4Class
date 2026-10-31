@@ -25,12 +25,9 @@ class Ui_inputDialog(object):
         self.label_text = QtWidgets.QLabel(inputDialog)
         self.label_text.setObjectName("label_text")
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_text)
-        self.pushButton_cancel = QtWidgets.QPushButton(inputDialog)
-        self.pushButton_cancel.setObjectName("pushButton_cancel")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.pushButton_cancel)
         self.pushButton_ok = QtWidgets.QPushButton(inputDialog)
         self.pushButton_ok.setObjectName("pushButton_ok")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.pushButton_ok)
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.pushButton_ok)
 
         self.retranslateUi(inputDialog)
         QtCore.QMetaObject.connectSlotsByName(inputDialog)
@@ -39,5 +36,4 @@ class Ui_inputDialog(object):
         _translate = QtCore.QCoreApplication.translate
         inputDialog.setWindowTitle(_translate("inputDialog", "Dialog"))
         self.label_text.setText(_translate("inputDialog", "TextLabel"))
-        self.pushButton_cancel.setText(_translate("inputDialog", "完成"))
         self.pushButton_ok.setText(_translate("inputDialog", "确认"))

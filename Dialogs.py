@@ -19,7 +19,6 @@ class InputDialog(QDialog, Ui_inputDialog):
         self.input_widget_class = inputwidget
         self.setWidget(content)
         self.pushButton_ok.clicked.connect(self.ok)
-        self.pushButton_cancel.clicked.connect(self.cancel)
 
     def setWidget(self, text):
         self.input_widget = self.input_widget_class(self)
