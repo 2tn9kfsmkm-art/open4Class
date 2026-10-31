@@ -67,7 +67,8 @@ class OndutySpawnWidget(SettingsWidgetBase):
         self.name_row_widget = QWidget()
         name_row = QHBoxLayout(self.name_row_widget)
         name_row.setContentsMargins(0, 0, 0, 0)
-        self.name_le = QLineEdit(FILE_DIR + '名单.csv')
+        self.name_le = QLineEdit('')
+        self.name_le.setPlaceholderText('留空 = 使用「名单」Tab 里的名单')
         self.name_btn = QPushButton('...')
         self.name_btn.setMinimumWidth(40)
         self.name_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
@@ -295,7 +296,10 @@ class OndutySpawnWidget(SettingsWidgetBase):
          offset, stride, shuffle, seed, skip_names) = self._read_params()
 
         if mode == 0:
-            names = read_names(name_path)
+            if name_path and os.path.exists(name_path):
+                names = read_names(name_path)
+            else:
+                names = shared_store().load_names()['name'].tolist()
             df = build_onduty_df(
                 start=start_dt, weeks=weeks, daily=daily,
                 names=names, jobs=jobs, skip_weekend=skip_weekend,

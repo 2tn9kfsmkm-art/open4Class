@@ -31,7 +31,7 @@ python Main.py
 - [ ] **13. 倒计时**：改一个日期 → 保存 → 左栏倒计时立即刷新
 
 - [ ] **14. 数据只在数据库里**：改一次名单/课表/值日/应用 → 退出重开 → 改动都还在
-  - `%APPDATA%\ClassManager\datas\` 里**不再更新**任何 CSV（只有 settings.json / data.json）
+  - `%APPDATA%\ClassManager\data\` 里**不再更新**任何 CSV（只有 settings.json / data.json）
   - `classmanager.db` 的修改时间会随操作更新
 
 ## 边界情况
@@ -61,5 +61,5 @@ python Main.py
 ## 打包后（仅打包版本需要）
 
 - [ ] **21. 干净目录启动**：把 `dist` 拷到别的路径（或没有 Python 的机器）→ 双击 exe 能启动
-- [ ] **22. 数据落点**：确认 `%APPDATA%\ClassManager\datas\` 里生成了数据文件，exe 目录下没有新增可写文件
+- [ ] **22. 数据落点**：确认 `%APPDATA%\ClassManager\data\` 里生成了数据文件，exe 目录下没有新增可写文件
 - [ ] **23. 样式完整**：按钮是深红、侧栏是深红、表格无白底 —— 说明 `stylesheet/` 带进包了

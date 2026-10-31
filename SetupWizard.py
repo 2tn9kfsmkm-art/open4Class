@@ -598,7 +598,7 @@ class DonePage(_Page):
         self.body.addWidget(self.summary_l)
 
         tip = QLabel(
-            '写入位置：%APPDATA%\\ClassManager\\datas\\\n'
+            '写入位置：%APPDATA%\\ClassManager\\data\\\n'
             '这些数据只保存在本机，不会上传到任何地方。'
         )
         tip.setWordWrap(True)

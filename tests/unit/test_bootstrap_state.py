@@ -17,7 +17,7 @@ WEEKDAYS = ["周一", "周二", "周三", "周四", "周五"]
 @pytest.fixture
 def root(tmp_dir):
     """模拟 %APPDATA%\\ClassManager 的结构，返回路径字符串。"""
-    (tmp_dir / "datas").mkdir()
+    (tmp_dir / "data").mkdir()
     (tmp_dir / "messages").mkdir()
     return tmp_dir
 
@@ -60,7 +60,7 @@ class TestState:
 class TestLegacyInference:
     def seed(self, root, names=("张三", "李四"), rows=(("语文", "数学", "", "", ""),)):
         from data.sqlite_store import SqliteStore
-        store = SqliteStore(str(root / "classmanager.db"))
+        store = SqliteStore(str(root / "data" / "classmanager.db"))
         try:
             store.save_names(DataFrame({"name": list(names)}))
             if rows:
@@ -97,7 +97,7 @@ class TestSaveAll:
 
     def store(self, root):
         from data.sqlite_store import SqliteStore
-        return SqliteStore(str(root / "classmanager.db"))
+        return SqliteStore(str(root / "data" / "classmanager.db"))
 
     def save(self, root, onduty=None):
         classlist = DataFrame(
@@ -153,17 +153,17 @@ class TestSaveAll:
 
     def test_writes_settings(self, root):
         self.save(root)
-        cfg = read_json(root / "datas/settings.json")
+        cfg = read_json(root / "data/settings.json")
         assert cfg["class_short_name"] == "高三八班"
         assert cfg["onduty_jobs"] == ["扫", "擦"]
 
     def test_preserves_existing_countdowns(self, root):
-        (root / "datas/settings.json").write_text(
+        (root / "data/settings.json").write_text(
             json.dumps({"countdowns": [{"label": "高考", "date": "2027-06-07"}]},
                        ensure_ascii=False),
             encoding="utf-8")
         self.save(root)
-        cfg = read_json(root / "datas/settings.json")
+        cfg = read_json(root / "data/settings.json")
         assert cfg["countdowns"][0]["label"] == "高考"
 
     def test_marks_initialized(self, root):
@@ -172,7 +172,7 @@ class TestSaveAll:
 
     def test_writes_last_login(self, root):
         self.save(root)
-        assert len(read_json(root / "datas/data.json")["last_login"]) == 8
+        assert len(read_json(root / "data/data.json")["last_login"]) == 8
 
     def test_rejects_empty_names(self, root):
         with pytest.raises(ValueError):
@@ -192,16 +192,16 @@ class TestSaveAll:
 
 class TestBackupAndReset:
     def seed(self, root):
-        (root / "datas/名单.csv").write_text("name\n张三\n", encoding="utf-8")
-        (root / "datas/loadings").mkdir(exist_ok=True)
-        (root / "datas/loadings/x classlist.csv").write_text("周一\n语文\n", encoding="utf-8")
+        (root / "data/名单.csv").write_text("name\n张三\n", encoding="utf-8")
+        (root / "data/loadings").mkdir(exist_ok=True)
+        (root / "data/loadings/x classlist.csv").write_text("周一\n语文\n", encoding="utf-8")
         (root / "messages/message.html").write_text("<html></html>", encoding="utf-8")
         bootstrap.mark_initialized(str(root))
 
     def test_backup_copies_everything(self, root):
         self.seed(root)
         dest = Path(bootstrap.backup_all(str(root)))
-        assert (dest / "datas/名单.csv").exists()
+        assert (dest / "data/名单.csv").exists()
         assert (dest / "messages/message.html").exists()
         assert (dest / "setup.json").exists()
 
@@ -215,7 +215,7 @@ class TestBackupAndReset:
         self.seed(root)
         bootstrap.reset_all(str(root))
         # 名单/课表被清掉，但 settings.json（记住存储方式）会保留
-        assert not (root / "datas/名单.csv").exists()
+        assert not (root / "data/名单.csv").exists()
         assert bootstrap.is_initialized(str(root)) is False
 
     def test_reset_clears_messages_by_default(self, root):
@@ -231,7 +231,7 @@ class TestBackupAndReset:
     def test_reset_returns_backup_containing_old_data(self, root):
         self.seed(root)
         dest = Path(bootstrap.reset_all(str(root)))
-        assert (dest / "datas/名单.csv").read_text(encoding="utf-8").strip() == "name\n张三"
+        assert (dest / "data/名单.csv").read_text(encoding="utf-8").strip() == "name\n张三"
 
 
 class TestResetKeepsApps:
@@ -241,7 +241,7 @@ class TestResetKeepsApps:
         from core.models import AppEntry
         from data.sqlite_repo import SqliteRepository
 
-        repo = SqliteRepository(str(root / "classmanager.db"))
+        repo = SqliteRepository(str(root / "data" / "classmanager.db"))
         repo.replace_students(["张三"])
         repo.replace_apps([AppEntry("浏览器", "C:/x.exe")])
         repo.close()
@@ -249,7 +249,7 @@ class TestResetKeepsApps:
 
     def read_apps(self, root):
         from data.sqlite_repo import SqliteRepository
-        repo = SqliteRepository(str(root / "classmanager.db"))
+        repo = SqliteRepository(str(root / "data" / "classmanager.db"))
         try:
             return repo.list_apps()
         finally:
@@ -265,7 +265,7 @@ class TestResetKeepsApps:
 
     def read_students(self, root):
         from data.sqlite_repo import SqliteRepository
-        repo = SqliteRepository(str(root / "classmanager.db"))
+        repo = SqliteRepository(str(root / "data" / "classmanager.db"))
         try:
             return repo.list_students()
         finally:
@@ -277,8 +277,8 @@ class TestResetKeepsApps:
         assert self.read_apps(root) == []
 
     def test_other_settings_are_reset(self, root):
-        (root / "datas/settings.json").write_text(
+        (root / "data/settings.json").write_text(
             json.dumps({"class_short_name": "九班"}), encoding="utf-8")
         bootstrap.reset_all(str(root))
-        cfg = read_json(root / "datas/settings.json")
+        cfg = read_json(root / "data/settings.json")
         assert "class_short_name" not in cfg

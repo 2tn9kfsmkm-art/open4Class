@@ -31,16 +31,15 @@ BACKUP_DIRNAME = 'backup'
 def _dirs(root: str | None = None) -> dict:
     """把 root 展开成各处路径，集中管理，避免散落的字符串拼接。"""
     base = root or DATA_BASE
-    datas = os.path.join(base, 'datas')
+    data_dir = os.path.join(base, 'data')
     return {
         'base': base,
-        'datas': datas,
+        'data': data_dir,
         'messages': os.path.join(base, 'messages'),
-        'loadings': os.path.join(datas, 'loadings'),
         'state': os.path.join(base, STATE_FILENAME),
         'backup': os.path.join(base, BACKUP_DIRNAME),
-        'settings': os.path.join(datas, 'settings.json'),
-        'data': os.path.join(datas, 'data.json'),
+        'settings': os.path.join(data_dir, 'settings.json'),
+        'datajson': os.path.join(data_dir, 'data.json'),
     }
 
 
@@ -97,7 +96,7 @@ def infer_legacy_state(root: str | None = None) -> bool:
     from data.sqlite_store import SqliteStore
 
     dirs = _dirs(root)
-    db_path = os.path.join(dirs['base'], 'classmanager.db')
+    db_path = os.path.join(dirs['data'], 'classmanager.db')
     if not os.path.exists(db_path):
         return False
 
@@ -135,7 +134,7 @@ def _store_for(root: str | None, dirs: dict):
     from data.store import shared_store
 
     if root:
-        return SqliteStore(os.path.join(dirs['base'], 'classmanager.db')), True
+        return SqliteStore(os.path.join(dirs['data'], 'classmanager.db')), True
     return shared_store(), False
 
 
@@ -156,7 +155,7 @@ def save_all(info: dict, names, classlist, onduty=None,
         ValueError: 名单为空；课表列数不是 5。
     """
     dirs = _dirs(root)
-    os.makedirs(dirs['datas'], exist_ok=True)
+    os.makedirs(dirs['data'], exist_ok=True)
 
     clean_names = _clean(names)
     if not clean_names:
@@ -200,7 +199,7 @@ def save_all(info: dict, names, classlist, onduty=None,
     _write_json(dirs['settings'], settings)
 
     # 今天已经完成设置，就当作今天已登录，避免立刻再弹"今天按星期几上课"
-    _write_json(dirs['data'], {'last_login': datetime.now().strftime('%Y%m%d')})
+    _write_json(dirs['datajson'], {'last_login': datetime.now().strftime('%Y%m%d')})
 
     mark_initialized(root, note='向导完成')
 
@@ -259,7 +258,7 @@ def _collect_apps(dirs: dict, mode: str = 'sqlite'):
     from data.sqlite_store import SqliteStore
     from data.store import APPS_COLUMNS
 
-    db_path = os.path.join(dirs['base'], 'classmanager.db')
+    db_path = os.path.join(dirs['data'], 'classmanager.db')
     if not os.path.exists(db_path):
         return DataFrame(columns=APPS_COLUMNS)
     store = None
@@ -293,7 +292,7 @@ def reset_all(root: str | None = None, keep_messages: bool = False,
 
     apps = _collect_apps(dirs) if keep_apps else None
 
-    _clear_dir(dirs['datas'])
+    _clear_dir(dirs['data'])
     if not keep_messages:
         _clear_dir(dirs['messages'])
     if os.path.exists(dirs['state']):
@@ -316,7 +315,7 @@ def reset_all(root: str | None = None, keep_messages: bool = False,
     if keep_apps and apps is not None and len(apps) > 0:
         try:
             from data.sqlite_store import SqliteStore
-            db_path = os.path.join(dirs['base'], 'classmanager.db')
+            db_path = os.path.join(dirs['data'], 'classmanager.db')
             store = SqliteStore(db_path)
             try:
                 store.save_apps(apps)

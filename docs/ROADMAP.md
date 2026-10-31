@@ -13,7 +13,7 @@
 | 项 | 决定 |
 |---|---|
 | 打包 | **Nuitka**（保持 HANDOFF D8）；onefile / standalone 待定，倾向 standalone |
-| `datas/` 是否进包 | **不进包**。分发给其他班级时由首次启动向导收集，之后一律写 `%APPDATA%` |
+| `datas/` 是否进包（已废弃） | **不进包**。分发给其他班级时由首次启动向导收集，之后一律写 `%APPDATA%` |
 | PySide6 / UI 细化 | **挂起**，等 UI 想法定稿后再谈 |
 | 悬浮窗 | 要做（放在数据层之后） |
 | Excel 导入 | 需要，只支持 `.xlsx`（需新增 `openpyxl` 依赖） |

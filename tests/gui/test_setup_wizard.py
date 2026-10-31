@@ -58,7 +58,7 @@ def test_full_walk_writes_all_data(tmp_dir):
     assert wizard.result() == QDialog.Accepted
 
     from data.sqlite_store import SqliteStore
-    store = SqliteStore(str(tmp_dir / "classmanager.db"))
+    store = SqliteStore(str(tmp_dir / "data" / "classmanager.db"))
     try:
         assert store.load_names()["name"].tolist() == ["张三", "李四", "王五"]
         assert store.load_classlist().iloc[0, 0] == "语文"

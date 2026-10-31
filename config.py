@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import shutil
 import copy
@@ -41,12 +41,67 @@ QSS_DIR      = RESOURCE_BASE + 'stylesheet' + os.sep
 RESOURCE_DIR = RESOURCE_BASE + 'resources'  + os.sep
 MSG_RES_BASE = RESOURCE_BASE + 'messages'   + os.sep
 
-# ---------- 可写数据（放 exe 旁边）----------
-FILE_DIR    = DATA_BASE + 'datas' + os.sep
+
+# ---------- 目录布局迁移：旧版 datas/ + 根目录 db → 统一收进 data/ ----------
+def _migrate_layout() -> None:
+    """把旧版的数据文件搬进 data/，然后删掉 datas/。
+
+    旧：ClassManager/{classmanager.db, datas/settings.json, datas/*.csv}
+    新：ClassManager/data/{classmanager.db, settings.json, data.json}
+    """
+    old_datas = DATA_BASE + 'datas' + os.sep
+    new_dir = DATA_BASE + 'data' + os.sep
+    old_db = DATA_BASE + 'classmanager.db'
+
+    if not os.path.isdir(old_datas) and not os.path.exists(old_db):
+        return
+
+    os.makedirs(new_dir, exist_ok=True)
+
+    # 先留一份副本，搬完再删 datas/，出问题还能找回
+    try:
+        stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_dir = DATA_BASE + 'backup' + os.sep + f'layout-{stamp}'
+        if os.path.isdir(old_datas):
+            shutil.copytree(old_datas, backup_dir + os.sep + 'datas',
+                            dirs_exist_ok=True)
+    except Exception as e:                      # noqa: BLE001
+        print(f'[config] 迁移前备份失败（继续）: {e!r}')
+
+    # 1) 根目录下的数据库文件
+    for name in ('classmanager.db', 'classmanager.db-wal',
+                 'classmanager.db-shm', 'classmanager.db.migrated_at'):
+        src = DATA_BASE + name
+        if os.path.exists(src) and not os.path.exists(new_dir + name):
+            try:
+                shutil.move(src, new_dir + name)
+            except OSError as e:
+                print(f'[config] 移动 {name} 失败: {e!r}')
+
+    # 2) datas/ 里留下的 json（settings.json / data.json）
+    if os.path.isdir(old_datas):
+        for name in os.listdir(old_datas):
+            if name.lower().endswith('.json'):
+                src = old_datas + name
+                dst = new_dir + name
+                if not os.path.exists(dst):
+                    try:
+                        shutil.move(src, dst)
+                    except OSError as e:
+                        print(f'[config] 移动 {name} 失败: {e!r}')
+        shutil.rmtree(old_datas, ignore_errors=True)
+
+
+_migrate_layout()
+
+# ---------- 可写数据（统一放在 data/）----------
+FILE_DIR    = DATA_BASE + 'data' + os.sep
+DATA_DIR    = FILE_DIR                      # 语义更清楚的名字
 MESSAGE_DIR = DATA_BASE + 'messages' + os.sep
 MESSAGE_MAIN_PATH  = MESSAGE_DIR + 'message.html'
 MESSAGE_IMAGE_DIR  = MESSAGE_DIR + 'images' + os.sep
 SETTINGS_JSON_PATH = FILE_DIR + 'settings.json'
+DB_PATH = FILE_DIR + 'classmanager.db'
 
 ENCODING = 'utf-8'
 CLASS_WEEKDAYS = ['周一', '周二', '周三', '周四', '周五']

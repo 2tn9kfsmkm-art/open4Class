@@ -11,7 +11,7 @@ from datetime import date
 
 from pandas import DataFrame
 
-from config import CLASS_WEEKDAYS, DATA_BASE
+from config import CLASS_WEEKDAYS, DB_PATH
 from core.models import AppEntry, OndutyEntry
 from data.sqlite_repo import SqliteRepository
 from data.store import APPS_COLUMNS, Store
@@ -20,7 +20,7 @@ DB_FILENAME = 'classmanager.db'
 
 
 def default_db_path() -> str:
-    return os.path.join(DATA_BASE, DB_FILENAME)
+    return DB_PATH
 
 
 class SqliteStore(Store):
