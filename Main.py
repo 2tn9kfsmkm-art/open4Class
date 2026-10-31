@@ -116,10 +116,11 @@ class Main(wn_Main, QMainWindow):
             self._countdown_labels.append(lbl)
             insert_at += 1
 
-        # 重置拉伸：设置按钮固定，其它都等比
+        # 重置拉伸：时间 / 倒计时等比，底部设置区（按钮 + logo）固定高度
         for i in range(layout.count()):
             w = layout.itemAt(i).widget()
-            layout.setStretch(i, 0 if w is self.setting_pb else 1)
+            fixed = w is self.setting_pb or w is self.icon_l
+            layout.setStretch(i, 0 if fixed else 1)
 
         self._update_countdowns()
 
