@@ -109,6 +109,8 @@ class wn_random(showDialog):
     def __init__(self, parent=None, data=None):
         super().__init__(parent)
         self.data = data if data is not None else []
+        # 随机点人是要投到教室大屏上给全班看的，不能跟着对话框的 11pt 缩小
+        self.setStyleSheet('* { font-size: 24pt; }')
         self.setupRandom()
 
     def setupRandom(self):

@@ -1,8 +1,18 @@
 /* ==================== 全局样式 ==================== */
 * {
     font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-    font-size: 24pt;
     color: #333333;
+}
+
+/* 字号分两级：
+   主窗口 —— 要远看（投屏 / 教室大屏），保持原来的大字号
+   对话框 —— 要近看（设置、导入、询问），缩小到舒适的操作字号 */
+QMainWindow, QMainWindow * {
+    font-size: 24pt;
+}
+
+QDialog, QDialog * {
+    font-size: 11pt;
 }
 
 QMainWindow, QWidget {
@@ -18,8 +28,17 @@ QPushButton {
     border-radius: 6px;
     padding: 10px 20px;
     font-weight: bold;
-    font-size:20pt;
     margin:6px
+}
+
+/* 按钮字号跟随所在窗口的级别 */
+QMainWindow QPushButton {
+    font-size: 20pt;
+}
+
+QDialog QPushButton {
+    font-size: 11pt;
+    padding: 4px 12px;
 }
 
 QPushButton:hover {
