@@ -182,50 +182,48 @@ def test_back_navigation_keeps_data(tmp_dir):
     assert wizard.pages[2].names() == ["张三", "李四"]
 
 
-class TestWindowGrowth:
-    """分组模式要撑高窗口，而不是压缩预览。"""
+class TestLayoutStability:
+    """窗口由用户拖动缩放；切换模式不得改变窗口尺寸，也不得留下残影。"""
 
-    @pytest.fixture
-    def big_screen(self, monkeypatch):
-        from SetupWizard import SetupWizard
-        monkeypatch.setattr(SetupWizard, "_available_height", staticmethod(lambda: 1080))
-
-    def test_grows_when_group_mode_selected(self, tmp_dir, big_screen):
-        from SetupWizard import PAGE_HEIGHT
-        wizard = SetupWizard(root=str(tmp_dir))
-        wizard._goto(4)
-        before = wizard.height()
-        assert before == PAGE_HEIGHT
-
-        page = wizard.pages[4]
-        page.mode_cb.setCurrentIndex(1)
-        assert wizard.height() > before
-        assert page.group_box.isVisibleTo(page)
-
-    def test_shrinks_back_on_sequential(self, tmp_dir, big_screen):
-        from SetupWizard import PAGE_HEIGHT
+    def test_window_size_is_stable_across_modes(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
         wizard._goto(4)
         page = wizard.pages[4]
-        page.mode_cb.setCurrentIndex(1)
+
         page.mode_cb.setCurrentIndex(0)
-        assert wizard.height() == PAGE_HEIGHT
+        size_seq = (wizard.width(), wizard.height())
+        page.mode_cb.setCurrentIndex(1)
+        assert (wizard.width(), wizard.height()) == size_seq
+        page.mode_cb.setCurrentIndex(2)
+        assert (wizard.width(), wizard.height()) == size_seq
 
-    def test_no_growth_on_other_pages(self, tmp_dir, big_screen):
-        from SetupWizard import PAGE_HEIGHT
+    def test_window_size_is_stable_across_pages(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
-        wizard._goto(4)
-        wizard.pages[4].mode_cb.setCurrentIndex(1)
-        wizard._goto(2)
-        assert wizard.height() == PAGE_HEIGHT
+        wizard._goto(0)
+        size = (wizard.width(), wizard.height())
+        for index in range(6):
+            wizard._goto(index)
+            assert (wizard.width(), wizard.height()) == size
 
-    def test_group_mode_does_not_squeeze_preview(self, tmp_dir, big_screen):
+    def test_group_box_toggles_with_mode(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
-        wizard._goto(4)
         page = wizard.pages[4]
         page.mode_cb.setCurrentIndex(0)
-        seq = page.preview.height()
+        assert page.group_box.isVisibleTo(page) is False
         page.mode_cb.setCurrentIndex(1)
-        grouped = page.preview.height()
-        assert grouped >= page.preview.minimumHeight()
-        assert grouped >= seq - 60          # 允许小幅变化，但不该被压到最低
+        assert page.group_box.isVisibleTo(page) is True
+
+    def test_content_lives_in_scroll_area(self, tmp_dir):
+        wizard = SetupWizard(root=str(tmp_dir))
+        page = wizard.pages[4]
+        assert page.scroll.widget() is page.content
+        # 内容不会把页面撑破：滚动区自身可以被压到很小
+        assert page.minimumSizeHint().height() < 400
+
+    def test_resizable_by_user(self, tmp_dir):
+        wizard = SetupWizard(root=str(tmp_dir))
+        wizard.resize(1000, 760)
+        assert (wizard.width(), wizard.height()) == (1000, 760)
+        # 最小尺寸仍然生效，避免拖成一条线
+        wizard.resize(200, 200)
+        assert wizard.width() >= 760 and wizard.height() >= 520
