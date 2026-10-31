@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import shutil
 import copy
@@ -7,7 +7,7 @@ from datetime import datetime
 from pandas import DataFrame
 
 from tools.PandasQModel import PandasQItemModel
-from tools.num2word import weekday2word
+from core.weekday import weekday2word
 
 APP_NAME = 'ClassManager'   # 换成你的应用名，会作为 %APPDATA%\ClassManager 的目录名
 

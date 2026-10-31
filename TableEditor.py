@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
+﻿from PyQt5.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
                              QTableView)
 from PyQt5.QtCore import Qt, QDate, QModelIndex
 from PyQt5.QtGui import QDropEvent
@@ -6,7 +6,7 @@ from pandas import DataFrame, read_csv, concat
 import sys
 
 from tools.PandasQModel import PandasQProxyModel, PandasQItemModel, divideModel, q_read_csv
-from tools.shape import *
+from core.shape import *
 from windows.wn_Onduty import Ui_dialog as wn_Onduty
 from windows.dropableTableView import *
 

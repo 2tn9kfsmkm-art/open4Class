@@ -1,4 +1,4 @@
-import os
+﻿import os
 from datetime import datetime
 
 from PyQt5.QtWidgets import QHeaderView, QMessageBox, QDialog
@@ -7,7 +7,7 @@ from pandas import DataFrame, read_csv
 
 from tools.LoadChain import Chain, ChainPool
 from tools.PandasQModel import q_read_csv, read_csv, PandasQItemModel
-from tools.shape import reshapeRow
+from core.shape import reshapeRow
 from tools.jsonModel import JsonDataModel
 
 from Dialogs import questionForChoice
