@@ -20,6 +20,11 @@ htmlcov/
 # 数据：含真实学生姓名，不入库；改动前请先跑一次备份（见 backups/）
 *.csv
 
+# 分享用的 git bundle 与打包产物，不入库
+*.bundle
+dist/
+build/
+
 # 消息页里的班级照片，同样不入库
 messages/images/
 
