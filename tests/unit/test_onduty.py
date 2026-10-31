@@ -14,6 +14,8 @@ from ondutySpawn import (
     build_onduty_df,
     build_onduty_df_from_groups,
     compute_stats,
+    read_groups_from_df,
+    split_groups,
 )
 
 MONDAY = datetime(2026, 10, 26)          # 周一
@@ -185,3 +187,50 @@ class TestComputeStats:
         df = DataFrame({"d": ["甲"]})
         counter, _ = compute_stats(df)
         assert dict(counter) == {"甲": 1}
+
+
+class TestSplitGroups:
+    def test_even_distribution(self):
+        groups = split_groups(["A", "B", "C", "D"], 2)
+        assert groups == {"第1组": ["A", "C"], "第2组": ["B", "D"]}
+
+    def test_remainder_goes_to_earlier_groups(self):
+        groups = split_groups(["A", "B", "C", "D", "E"], 2)
+        assert groups["第1组"] == ["A", "C", "E"]
+        assert groups["第2组"] == ["B", "D"]
+
+    def test_empty_names_returns_empty(self):
+        assert split_groups([], 3) == {}
+
+    def test_count_below_one_is_treated_as_one(self):
+        assert list(split_groups(["A"], 0)) == ["第1组"]
+
+    def test_blank_and_padded_names_are_cleaned(self):
+        assert split_groups(["  A ", "", "B"], 1)["第1组"] == ["A", "B"]
+
+
+class TestReadGroupsFromDf:
+    def test_columns_become_groups(self):
+        df = DataFrame({"第一组": ["甲", "乙"], "第二组": ["丙", "丁"]})
+        assert read_groups_from_df(df) == {
+            "第一组": ["甲", "乙"], "第二组": ["丙", "丁"]}
+
+    def test_empty_cells_are_skipped(self):
+        df = DataFrame({"组1": ["甲", None], "组2": ["丙", ""]})
+        groups = read_groups_from_df(df)
+        assert groups["组1"] == ["甲"]
+        assert groups["组2"] == ["丙"]
+
+    def test_unnamed_column_gets_default_name(self):
+        df = DataFrame({"Unnamed: 0": ["甲"], "第二组": ["乙"]})
+        groups = read_groups_from_df(df)
+        assert "第1组" in groups
+        assert "第二组" in groups
+
+    def test_all_empty_raises(self):
+        with pytest.raises(ValueError):
+            read_groups_from_df(DataFrame({"a": [None, None]}))
+
+    def test_no_columns_raises(self):
+        with pytest.raises(ValueError):
+            read_groups_from_df(DataFrame())

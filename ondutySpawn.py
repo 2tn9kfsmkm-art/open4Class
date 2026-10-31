@@ -186,6 +186,57 @@ def build_onduty_df(start, weeks, daily, names, jobs, skip_weekend=True,
 
 # ------------------------ 分组表 ------------------------
 
+def read_groups_from_df(df) -> dict:
+    """从已读入的表格识别分组：**每列一组，列名为组名，单元格为成员**。
+
+    Args:
+        df: 已读入的表格（CSV / Excel 共用）。
+    Returns:
+        {组名: [成员...]}；空列与空单元格会被跳过；
+        列名为空或是 pandas 的 "Unnamed: N" 时自动命名「第N组」。
+    Raises:
+        ValueError: 表格没有列，或所有列都是空的。
+    """
+    if df is None or df.shape[1] == 0:
+        raise ValueError('分组表没有可用的列')
+
+    groups = {}
+    for index, col in enumerate(df.columns):
+        name = str(col).strip()
+        if not name or name.lower().startswith('unnamed'):
+            name = f'第{index + 1}组'
+        members = []
+        for v in df[col].tolist():
+            if v is None or pd.isna(v):
+                continue
+            s = str(v).strip()
+            if s:
+                members.append(s)
+        if members:
+            groups[name] = members
+
+    if not groups:
+        raise ValueError('分组表为空')
+    return groups
+
+
+def split_groups(names, count: int) -> dict:
+    """把名单按顺序平均分成 count 组（轮流发放，余数落在前面的组）。
+
+    Args:
+        names: 姓名序列（顺序会被保留）。
+        count: 组数，小于 1 时按 1 组处理。
+    Returns:
+        {「第1组」: [姓名...], ...}；名单为空时返回空字典。
+    """
+    clean = [str(n).strip() for n in names if str(n).strip()]
+    count = max(1, int(count))
+    if not clean:
+        return {}
+    buckets = {f'第{i + 1}组': clean[i::count] for i in range(count)}
+    return {k: v for k, v in buckets.items() if v}
+
+
 def read_groups(path: str) -> dict:
     """读取分组表：CSV 每列为一组，列名为组名，单元格为成员名。"""
     if not os.path.exists(path):
@@ -194,22 +245,7 @@ def read_groups(path: str) -> dict:
         df = pd.read_csv(path)
     except Exception as e:
         raise ValueError(f'无法解析 CSV：{e!r}')
-
-    groups = {}
-    for col in df.columns:
-        members = []
-        for v in df[col].tolist():
-            if pd.isna(v):
-                continue
-            s = str(v).strip()
-            if s:
-                members.append(s)
-        if members:
-            groups[str(col).strip()] = members
-
-    if not groups:
-        raise ValueError('分组表为空')
-    return groups
+    return read_groups_from_df(df)
 
 
 def write_sample_group_csv(path: str) -> None:

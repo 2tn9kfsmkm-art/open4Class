@@ -1,4 +1,4 @@
-﻿"""首次使用向导。
+"""首次使用向导。
 
 约定：**向导只收集表单，落盘全部交给 bootstrap.save_all**。
 这样以后 P6 换 SQLite，只改 bootstrap，向导不用动。
@@ -36,7 +36,14 @@ from PyQt5.QtWidgets import (
 
 import bootstrap
 from config import CLASS_WEEKDAYS, DEFAULT_CLASS_ROWS, load_user_settings
-from ondutySpawn import build_onduty_df, compute_stats, read_names_from_df
+from ondutySpawn import (
+    build_onduty_df,
+    build_onduty_df_from_groups,
+    compute_stats,
+    read_groups_from_df,
+    read_names_from_df,
+    split_groups,
+)
 
 PAGE_WIDTH = 900
 PAGE_HEIGHT = 620
@@ -347,14 +354,17 @@ class ClasslistPage(_Page):
 # ============================================================
 class OndutyPage(_Page):
     title = '值日安排'
-    subtitle = '按名单顺序轮值。生成后也可以随时在「设置 → 值日生生成」里重做。'
+    subtitle = '可以按名单顺序轮值，也可以按分组轮值。之后随时能在「设置 → 值日生生成」里重做。'
 
     def _build(self):
+        self._imported_groups = None
+
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
+        self.form = form
 
         self.mode_cb = QComboBox()
-        self.mode_cb.addItems(['按名单顺序轮值', '暂时不生成，稍后自己设置'])
+        self.mode_cb.addItems(['按名单顺序轮值', '按分组轮值', '暂时不生成，稍后自己设置'])
         form.addRow('生成方式：', self.mode_cb)
 
         self.start_de = QDateEdit(QDate.currentDate())
@@ -382,6 +392,28 @@ class OndutyPage(_Page):
         self.skip_weekend_cb.setChecked(True)
         form.addRow('', self.skip_weekend_cb)
 
+        # ---- 分组模式专用 ----
+        self.group_count_sb = QSpinBox()
+        self.group_count_sb.setRange(2, 12)
+        self.group_count_sb.setValue(4)
+        self.group_count_sb.setSuffix(' 组')
+        self.group_count_row = self._make_form_row(form, '分成几组：', self.group_count_sb)
+
+        self.group_src_l = QLabel('当前：按名单顺序平均分组')
+        self.group_src_l.setStyleSheet('font-size: 10pt; color: #666666;')
+        self.group_src_row = self._make_form_row(form, '分组来源：', self.group_src_l)
+
+        group_btns = QHBoxLayout()
+        self.group_import_btn = QPushButton('导入分组表（Excel / CSV）')
+        self.group_clear_btn = QPushButton('改回自动均分')
+        for b in (self.group_import_btn, self.group_clear_btn):
+            b.setStyleSheet('font-size: 11pt; padding: 4px 12px;')
+            group_btns.addWidget(b)
+        group_btns.addStretch(1)
+        group_btns_w = QWidget()
+        group_btns_w.setLayout(group_btns)
+        self.group_btns_row = self._make_form_row(form, '', group_btns_w)
+
         self.body.addLayout(form)
 
         row = QHBoxLayout()
@@ -397,39 +429,113 @@ class OndutyPage(_Page):
 
         self.refresh_btn.clicked.connect(self.refresh_preview)
         self.mode_cb.currentIndexChanged.connect(self._on_mode_changed)
+        self.group_count_sb.valueChanged.connect(self._on_group_source_changed)
+        self.group_import_btn.clicked.connect(self._on_import_groups)
+        self.group_clear_btn.clicked.connect(self._on_clear_groups)
         self._on_mode_changed()
 
-    def _on_mode_changed(self):
-        enabled = self.mode_cb.currentIndex() == 0
-        for w in (self.start_de, self.weeks_sb, self.daily_sb,
-                  self.jobs_le, self.skip_weekend_cb, self.refresh_btn):
-            w.setEnabled(enabled)
+    def _make_form_row(self, form, label, widget):
+        """加一行到表单并记住行号，便于整行显示/隐藏。"""
+        form.addRow(label, widget)
+        return form.rowCount() - 1
 
+    def _set_row_visible(self, form, row_index, visible):
+        for role in (QFormLayout.LabelRole, QFormLayout.FieldRole):
+            item = form.itemAt(row_index, role)
+            if item is not None and item.widget() is not None:
+                item.widget().setVisible(visible)
+
+    # ---------- 模式 / 分组 ----------
+    def _on_mode_changed(self):
+        mode = self.mode_cb.currentIndex()
+        is_group = mode == 1
+        enabled = mode in (0, 1)
+
+        for w in (self.start_de, self.weeks_sb, self.jobs_le,
+                  self.skip_weekend_cb, self.refresh_btn):
+            w.setEnabled(enabled)
+        self.daily_sb.setEnabled(mode == 0)          # 分组模式下人数由组大小决定
+
+        for row in (self.group_count_row, self.group_src_row, self.group_btns_row):
+            self._set_row_visible(self.form, row, is_group)
+        self._on_group_source_changed()
+        self.refresh_preview()
+
+    def _on_group_source_changed(self):
+        if self._imported_groups:
+            sizes = '、'.join(f'{k}({len(v)})' for k, v in self._imported_groups.items())
+            self.group_src_l.setText(f'已导入 {len(self._imported_groups)} 组：{sizes}')
+        else:
+            self.group_src_l.setText(f'当前：按名单顺序平均分成 {self.group_count_sb.value()} 组')
+        self.group_clear_btn.setEnabled(bool(self._imported_groups))
+
+    def _on_import_groups(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '导入分组表', '', '表格文件 (*.csv *.xlsx);;CSV (*.csv);;Excel (*.xlsx)')
+        if not path:
+            return
+        try:
+            src = read_excel_safe(path) if path.lower().endswith('.xlsx') else read_csv(path)
+            groups = read_groups_from_df(src)
+        except Exception as e:
+            QMessageBox.warning(self, '导入失败', f'{e}')
+            return
+        self._imported_groups = groups
+        self.group_count_sb.setEnabled(False)
+        self._on_group_source_changed()
+        self.refresh_preview()
+
+    def _on_clear_groups(self):
+        self._imported_groups = None
+        self.group_count_sb.setEnabled(True)
+        self._on_group_source_changed()
+        self.refresh_preview()
+
+    def groups(self):
+        """返回 {组名: [成员...]}；优先用导入的分组表。"""
+        if self._imported_groups:
+            return dict(self._imported_groups)
+        names = self.wizard.data.get('names') or []
+        n = self.group_count_sb.value()
+        return split_groups(names, n)
+
+    # ---------- 生成 ----------
     def _jobs(self):
         return [j.strip() for j in self.jobs_le.text().split(',') if j.strip()]
 
     def build(self):
         """返回 (df 或 None, 错误文案 或 None)。"""
-        if self.mode_cb.currentIndex() != 0:
+        mode = self.mode_cb.currentIndex()
+        if mode == 2:
             return None, None
-        names = self.wizard.data.get('names') or []
-        if not names:
-            return None, '还没有学生名单'
-        daily = self.daily_sb.value()
-        if daily > len(names):
-            return None, f'每日人数（{daily}）不能超过学生人数（{len(names)}）'
+
         jobs = self._jobs()
         if not jobs:
             return None, '职务模板不能为空'
+        start = self.start_de.date().toPyDate()
+        weeks = self.weeks_sb.value()
+
         try:
-            df = build_onduty_df(
-                start=self.start_de.date().toPyDate(),
-                weeks=self.weeks_sb.value(),
-                daily=daily,
-                names=names,
-                jobs=jobs,
-                skip_weekend=self.skip_weekend_cb.isChecked(),
-            )
+            if mode == 0:
+                names = self.wizard.data.get('names') or []
+                if not names:
+                    return None, '还没有学生名单'
+                daily = self.daily_sb.value()
+                if daily > len(names):
+                    return None, f'每日人数（{daily}）不能超过学生人数（{len(names)}）'
+                df = build_onduty_df(
+                    start=start, weeks=weeks, daily=daily,
+                    names=names, jobs=jobs,
+                    skip_weekend=self.skip_weekend_cb.isChecked(),
+                )
+            else:
+                groups = self.groups()
+                if not groups:
+                    return None, '分组表是空的'
+                df = build_onduty_df_from_groups(
+                    start=start, weeks=weeks, groups=groups, jobs=jobs,
+                    skip_weekend=self.skip_weekend_cb.isChecked(),
+                )
         except Exception as e:
             return None, str(e)
         return df, None

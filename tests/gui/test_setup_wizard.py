@@ -114,10 +114,52 @@ def test_onduty_can_be_skipped(tmp_dir):
     wizard = build_wizard(tmp_dir)
     wizard.data["names"] = ["张三", "李四"]
     page = wizard.pages[4]
-    page.mode_cb.setCurrentIndex(1)
+    page.mode_cb.setCurrentIndex(2)
     df, err = page.build()
     assert df is None and err is None
     assert page.validate() is None
+
+
+def test_onduty_group_mode_auto_split(tmp_dir):
+    wizard = build_wizard(tmp_dir)
+    wizard.data["names"] = ["A", "B", "C", "D", "E"]
+    page = wizard.pages[4]
+    page.mode_cb.setCurrentIndex(1)
+    page.group_count_sb.setValue(2)
+
+    groups = page.groups()
+    assert list(groups) == ["第1组", "第2组"]
+    assert groups["第1组"] == ["A", "C", "E"]
+
+    df, err = page.build()
+    assert err is None
+    assert df.shape[0] == 3          # 行数 = 最大组人数
+
+
+def test_onduty_group_mode_uses_imported_table(tmp_dir):
+    wizard = build_wizard(tmp_dir)
+    wizard.data["names"] = ["A", "B", "C"]
+    page = wizard.pages[4]
+    page._imported_groups = {"甲组": ["A", "B"], "乙组": ["C"]}
+    page.mode_cb.setCurrentIndex(1)
+
+    assert page.groups() == {"甲组": ["A", "B"], "乙组": ["C"]}
+    df, err = page.build()
+    assert err is None
+    assert df.shape[0] == 2          # 按最大组补齐
+
+
+def test_group_rows_hidden_outside_group_mode(tmp_dir, qapp):
+    wizard = build_wizard(tmp_dir)
+    page = wizard.pages[4]
+
+    page.mode_cb.setCurrentIndex(0)
+    qapp.processEvents()
+    assert page.group_count_sb.isVisibleTo(page) is False
+
+    page.mode_cb.setCurrentIndex(1)
+    qapp.processEvents()
+    assert page.group_count_sb.isVisibleTo(page) is True
 
 
 def test_back_navigation_keeps_data(tmp_dir):
