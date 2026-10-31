@@ -1,4 +1,4 @@
-﻿import os
+import os
 from datetime import datetime
 
 from PyQt5.QtWidgets import QHeaderView, QMessageBox, QDialog
@@ -13,6 +13,8 @@ from tools.jsonModel import JsonDataModel
 from Dialogs import questionForChoice
 from TableEditor import TableEditor
 from config import *
+
+from data.store import shared_store
 
 
 # ---------- 主线程同步等待 ----------
@@ -37,10 +39,11 @@ class onduty_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        path = FILE_DIR + '未来值日.csv'
-        if not os.path.exists(path):
-            DataFrame().to_csv(path, index=False)
-        self.onduty_model = q_read_csv(path)
+        # 走 Store：CSV / SQLite 由设置决定，这里不再关心文件在哪
+        self.onduty_model = PandasQItemModel(data=shared_store().load_onduty())
+
+    def _save(self):
+        shared_store().save_onduty(self.onduty_model._df)
 
     def process(self):
         df = self.onduty_model._df
@@ -57,7 +60,7 @@ class onduty_chain(Chain):
         print('已删除' + str(cols_to_drop) + '值日记录')
         if cols_to_drop:
             df.drop(columns=cols_to_drop, inplace=True)
-            df.to_csv(FILE_DIR + '未来值日.csv', index=False)
+            self._save()
 
         if str_date in df.columns:
             df[str_date].to_csv(onduty_today_path, index=False)
@@ -74,7 +77,7 @@ class onduty_chain(Chain):
                 new_df = DataFrame({str_date: placeholder})
                 self.onduty_model._bind_df(new_df)
                 df = self.onduty_model._df
-            df.to_csv(FILE_DIR + '未来值日.csv', index=False)
+            self._save()
 
         self.emit({'onduty_model': self.onduty_model})
 
@@ -104,8 +107,9 @@ class classlist_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        self.classlist_model = q_read_csv(FILE_DIR + '课表.csv')
-        self.classes = read_csv(FILE_DIR + '课程单.csv')
+        store = shared_store()
+        self.classlist_model = PandasQItemModel(data=store.load_classlist())
+        self.classes = store.load_courses()
 
     def prepare(self):
         """确定"今天"的课表：周末且久未登录时询问一次，必要时生成临时课表。
@@ -215,10 +219,7 @@ class app_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        path = FILE_DIR + '应用路径.csv'
-        if not os.path.exists(path):
-            DataFrame(columns=['软件链接', 'path']).to_csv(path, index=False)
-        self.applications = q_read_csv(path)
+        self.applications = PandasQItemModel(data=shared_store().load_apps())
 
     def process(self):
         tmp_data = self.applications._df['软件链接'].to_list()
@@ -242,16 +243,15 @@ class app_chain(Chain):
         widget.applink_tv.resizeRowsToContents()
 
     def delete(self, appname: str) -> bool:
-        path = FILE_DIR + '应用路径.csv'
         df = self.applications._df
         new_df = df[df['软件链接'] != appname]
         if len(new_df) == len(df):
             print(f'[app] 未找到 "{appname}"，删除跳过')
             return False
         try:
-            new_df.to_csv(path, index=False)
+            shared_store().save_apps(new_df)
         except Exception as e:
-            print(f'[app] 写 CSV 失败: {e!r}')
+            print(f'[app] 保存失败: {e!r}')
             return False
         self.load()
         self.process()
@@ -294,10 +294,7 @@ class stu_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        path = FILE_DIR + '名单.csv'
-        if not os.path.exists(path):
-            DataFrame(columns=['name']).to_csv(path, index=False)
-        self.stu_model = q_read_csv(path)
+        self.stu_model = PandasQItemModel(data=shared_store().load_names())
 
     def process(self):
         self.emit({'stu_model': self.stu_model})
