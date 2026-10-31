@@ -1,7 +1,6 @@
-"""Store 抽象：CSV 与 SQLite 两个实现必须给出**同样形状**的 DataFrame。
+"""Store 接口：SQLite 实现的行为与形状。
 
-这层是 P6 的接缝：上层（loading.py、设置窗口）只认 Store，
-换存储时不用改业务代码。
+（CSV 实现已随"去掉 CSV 依赖"删除，这里只验 SQLite。）
 """
 
 from datetime import date
@@ -9,20 +8,15 @@ from datetime import date
 import pytest
 from pandas import DataFrame
 
-from data.store import APPS_COLUMNS, CsvStore
 from data.sqlite_store import SqliteStore
+from data.store import APPS_COLUMNS
 
 WEEKDAYS = ["周一", "周二", "周三", "周四", "周五"]
 
 
-@pytest.fixture(params=["csv", "sqlite"])
-def store(request, tmp_dir):
-    if request.param == "csv":
-        directory = tmp_dir / "datas"
-        directory.mkdir()
-        s = CsvStore(str(directory))
-    else:
-        s = SqliteStore(str(tmp_dir / "classmanager.db"))
+@pytest.fixture
+def store(tmp_dir):
+    s = SqliteStore(str(tmp_dir / "classmanager.db"))
     yield s
     s.close()
 
@@ -52,11 +46,22 @@ class TestClasslist:
         assert loaded.iloc[0, 0] == "语文"
         assert loaded.iloc[1, 0] == "英语"
 
-    def test_empty_cells_become_empty_string(self, store):
-        df = DataFrame([["语文", "", "", "", ""]], columns=WEEKDAYS)
-        store.save_classlist(df)
-        assert store.load_classlist().iloc[0, 1] in ("", None) or str(
-            store.load_classlist().iloc[0, 1]) == "nan"
+    def test_for_date_uses_template(self, store):
+        store.save_classlist(DataFrame([["语文", "", "", "", ""]], columns=WEEKDAYS))
+        assert store.load_classlist_for_date(date(2026, 11, 2)) == ["语文"]  # 周一
+
+    def test_override_wins(self, store):
+        store.save_classlist(DataFrame([["语文", "", "", "", ""]], columns=WEEKDAYS))
+        store.save_classlist_override(date(2026, 11, 2), ["体育", "自习"])
+        assert store.load_classlist_for_date(date(2026, 11, 2)) == ["体育", "自习"]
+
+    def test_has_override(self, store):
+        day = date(2026, 11, 2)
+        assert store.has_classlist_override(day) is False
+        store.save_classlist_override(day, ["体育"])
+        assert store.has_classlist_override(day) is True
+        store.delete_classlist_override(day)
+        assert store.has_classlist_override(day) is False
 
 
 class TestOnduty:
@@ -69,9 +74,6 @@ class TestOnduty:
         loaded = store.load_onduty()
         assert list(loaded.columns) == ["2026-11-02", "2026-11-03"]
         assert loaded.iloc[0, 0] == "张三 扫"
-        # CSV 读回空单元格是 NaN，SQLite 是 ''；上层两者都当空处理
-        empty = loaded.iloc[1, 1]
-        assert empty == "" or str(empty) == "nan"
 
     def test_name_with_inner_spaces(self, store):
         store.save_onduty(DataFrame({"2026-11-02": ["曾   域 扫"]}))
@@ -87,19 +89,3 @@ class TestApps:
         loaded = store.load_apps()
         assert loaded.iloc[0, 0] == "浏览器"
         assert loaded.iloc[0, 1] == "C:/x.exe"
-
-
-class TestFactory:
-    def test_env_switch_to_sqlite(self, tmp_dir, monkeypatch):
-        monkeypatch.setenv("CLASSMANAGER_STORAGE", "sqlite")
-        monkeypatch.setattr("data.sqlite_store.default_db_path",
-                            lambda: str(tmp_dir / "auto.db"))
-        from data.store import get_store
-        s = get_store()
-        assert isinstance(s, SqliteStore)
-        s.close()
-
-    def test_defaults_to_csv(self, monkeypatch):
-        monkeypatch.delenv("CLASSMANAGER_STORAGE", raising=False)
-        from data.store import get_store
-        assert isinstance(get_store(), CsvStore)

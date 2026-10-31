@@ -3,10 +3,10 @@ from datetime import datetime
 
 from PyQt5.QtWidgets import QHeaderView, QMessageBox, QDialog
 from PyQt5.QtCore import Qt, QEventLoop, QUrl
-from pandas import DataFrame, read_csv
+from pandas import DataFrame
 
 from tools.LoadChain import Chain, ChainPool
-from tools.PandasQModel import q_read_csv, read_csv, PandasQItemModel
+from tools.PandasQModel import PandasQItemModel
 from core.shape import reshapeRow
 from tools.jsonModel import JsonDataModel
 
@@ -39,7 +39,7 @@ class onduty_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        # 走 Store：CSV / SQLite 由设置决定，这里不再关心文件在哪
+        # SQLite 是唯一存储，这里不再关心文件在哪
         self.onduty_model = PandasQItemModel(data=shared_store().load_onduty())
 
     def _save(self):
@@ -62,12 +62,8 @@ class onduty_chain(Chain):
             df.drop(columns=cols_to_drop, inplace=True)
             self._save()
 
-        if str_date in df.columns:
-            df[str_date].to_csv(onduty_today_path, index=False)
-        else:
+        if str_date not in df.columns:
             placeholder = ['暂无值日信息'] + [''] * 4
-            DataFrame(placeholder).to_csv(onduty_today_path, index=False,
-                                        header=[str_date])
             if len(df) == 0:
                 df[str_date] = placeholder
             elif len(df) == 5:
@@ -84,11 +80,10 @@ class onduty_chain(Chain):
     def play(self, widget):
         if widget is None:
             return
-        if not os.path.exists(onduty_today_path):
-            print(f'Warning: File {onduty_today_path} does not exist')
-            return
-        data = read_csv(onduty_today_path, encoding='utf-8', index_col=False)
-        self.model_onduty_today = PandasQItemModel(data=data)
+        df = self.onduty_model._df
+        today_rows = df[str_date].tolist() if str_date in df.columns else []
+        self.model_onduty_today = PandasQItemModel(
+            data=DataFrame({str_date: today_rows}))
         self.emit({'model_onduty_today': self.model_onduty_today})
 
         widget.onduty_tv.setModel(self.model_onduty_today)
@@ -98,10 +93,8 @@ class onduty_chain(Chain):
         widget.onduty_tv.verticalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents)
         widget.onduty_tv.resizeRowsToContents()
-        # 不再在这里 connect openWn_random（Main 里统一连接）
 
 
-# ============================================================
 class classlist_chain(Chain):
     def __init__(self, parent=None, widget=None, name='classlist'):
         super().__init__(parent, widget, name)
@@ -111,11 +104,18 @@ class classlist_chain(Chain):
         self.classlist_model = PandasQItemModel(data=store.load_classlist())
         self.classes = store.load_courses()
 
-    def prepare(self):
-        """确定"今天"的课表：周末且久未登录时询问一次，必要时生成临时课表。
+    # ---- 今天的课表：临时课表优先，否则用周模板 ----
+    def today_courses(self):
+        return shared_store().load_classlist_for_date(today.date())
 
-        只有确实拿到可用课表后才写 last_login —— 否则中途退出（关掉询问框、
-        结束进程）会把"今天已经问过"记下来，当天就再也拿不到课表了。
+    def has_today_classlist(self) -> bool:
+        return any(str(c).strip() for c in self.today_courses())
+
+    def prepare(self):
+        """确定"今天"的课表：周末且久未登录时询问一次。
+
+        选择结果直接写进数据库的临时课表，所以中途退出也不会留下
+        "问过了但没课表"的坏状态。
         """
         global class_wordday
         appData = self.parent['appData']
@@ -124,11 +124,9 @@ class classlist_chain(Chain):
 
         ok = False
         if weekday not in range(5):
-            # 今天的课表文件不存在时，即使"今天问过"也要重新问，
-            # 这样上次中途退出留下的空状态能自动恢复
-            need_ask = (last_login_dt - today).days < -1 or not os.path.exists(classlist_path)
+            need_ask = (last_login_dt - today).days < -1 or not self.has_today_classlist()
             if need_ask:
-                if os.path.exists(classlist_path):
+                if self.has_today_classlist():
                     answer = QMessageBox.question(
                         self.widget, '提示', '已有临时课表，是否使用？',
                         QMessageBox.Yes | QMessageBox.No)
@@ -141,36 +139,34 @@ class classlist_chain(Chain):
                 ok = True
         else:
             class_wordday = wordday
-            self.classlist_model[class_wordday].to_csv(classlist_path, index=False)
             ok = True
 
         if ok:
             appData.last_login = today.strftime('%Y%m%d')
 
     def _set_tmp_classlist(self) -> bool:
-        """询问今天按星期几上课，返回是否成功得到一份可用课表。
-
-        用户直接关掉询问框、或在临时课表编辑器里取消时返回 False，
-        并且不写任何文件，留待下次启动重新询问，而不是塞一张空表。
-        """
+        """询问今天按星期几上课，返回是否写入了临时课表。"""
         global class_wordday, classday
+        store = shared_store()
         choices = list(range(1, 6)) + ['设置临时课表']
         classday = questionForChoice(
             self.widget, title='提示',
             text='今天没有课表信息，按照星期几上课？', choices=choices)
 
         if classday == '设置临时课表':
-            # 行数从周模板读取
             n_rows = self.classlist_model._df.shape[0]
             if n_rows <= 0:
-                n_rows = 8
+                n_rows = DEFAULT_CLASS_ROWS
             model = PandasQItemModel({wordday: [None for _ in range(n_rows)]})
 
+            def _save_tmp(df):
+                store.save_classlist_override(
+                    today.date(), [str(v) for v in df.iloc[:, 0].tolist()])
+
             editor = TableEditor(
-                model, accept_simple=False, savepath=classlist_path,
+                model, accept_simple=False, savepath='',
                 title='设置临时课表', show_size=f'{n_rows}x1',
-                row_ops=True)
-            # 只有"完成"才写盘；"取消"不再覆盖成空表，也不再回退写周模板
+                row_ops=True, on_save=_save_tmp)
             if editor.exec_() == QDialog.Accepted:
                 return True
             print('[classlist] 取消了临时课表设置，今日课表留空')
@@ -179,10 +175,13 @@ class classlist_chain(Chain):
         if classday is not None:
             classday = int(classday) - 1
             class_wordday = weekday2word(classday)
-            if class_wordday not in self.classlist_model._df.columns:
+            template = self.classlist_model._df
+            if class_wordday not in template.columns:
                 print(f'[classlist] 周模板里没有 "{class_wordday}"，今日课表留空')
                 return False
-            self.classlist_model[class_wordday].to_csv(classlist_path, index=False)
+            store.save_classlist_override(
+                today.date(),
+                [str(v) for v in template[class_wordday].tolist()])
             return True
 
         print('[classlist] 用户关闭了课表询问，今日课表留空')
@@ -200,7 +199,11 @@ class classlist_chain(Chain):
     def play(self, widget):
         if widget is None:
             return
-        self.model_classlist_today = q_read_csv(classlist_path)
+        courses = self.today_courses()
+        if not courses:
+            courses = ['']
+        self.model_classlist_today = PandasQItemModel(
+            data=DataFrame({wordday: courses}))
         self.emit({'model_classlist_today': self.model_classlist_today})
 
         widget.classlist_tv.setModel(self.model_classlist_today)
@@ -210,7 +213,6 @@ class classlist_chain(Chain):
         widget.classlist_tv.verticalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.ResizeToContents)
         widget.classlist_tv.resizeRowsToContents()
-        # 不再在这里 connect openWn_classlist（Main 里统一连接）
 
 
 # ============================================================

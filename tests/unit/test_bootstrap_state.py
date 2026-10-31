@@ -58,30 +58,29 @@ class TestState:
 # ------------------------------------------------------------ 老用户推断
 
 class TestLegacyInference:
-    def test_false_when_nothing_exists(self, root):
+    def seed(self, root, names=("张三", "李四"), rows=(("语文", "数学", "", "", ""),)):
+        from data.sqlite_store import SqliteStore
+        store = SqliteStore(str(root / "classmanager.db"))
+        try:
+            store.save_names(DataFrame({"name": list(names)}))
+            if rows:
+                store.save_classlist(DataFrame(list(rows), columns=WEEKDAYS))
+        finally:
+            store.close()
+
+    def test_false_when_no_database(self, root):
         assert bootstrap.infer_legacy_state(str(root)) is False
 
-    def test_false_when_names_exist_but_classlist_missing(self, root):
-        DataFrame({"name": ["张三", "李四"]}).to_csv(rd(root, "datas/名单.csv"), index=False)
+    def test_false_when_names_missing(self, root):
+        self.seed(root, names=(), rows=(("语文", "", "", "", ""),))
         assert bootstrap.infer_legacy_state(str(root)) is False
 
-    def test_false_when_classlist_is_only_skeleton(self, root):
-        """自举生成的 8 行空课表不能算"已初始化"。"""
-        DataFrame({"name": ["张三"]}).to_csv(rd(root, "datas/名单.csv"), index=False)
-        DataFrame(index=range(8), columns=WEEKDAYS).to_csv(
-            rd(root, "datas/课表.csv"), index=False)
-        assert bootstrap.infer_legacy_state(str(root)) is False
-
-    def test_false_when_names_empty(self, root):
-        DataFrame({"name": []}).to_csv(rd(root, "datas/名单.csv"), index=False)
-        DataFrame([["语文", "数学", "", "", ""]], columns=WEEKDAYS).to_csv(
-            rd(root, "datas/课表.csv"), index=False)
+    def test_false_when_classlist_empty(self, root):
+        self.seed(root, rows=())
         assert bootstrap.infer_legacy_state(str(root)) is False
 
     def test_true_with_real_data(self, root):
-        DataFrame({"name": ["张三", "李四"]}).to_csv(rd(root, "datas/名单.csv"), index=False)
-        DataFrame([["语文", "数学", "英语", "物理", "化学"]], columns=WEEKDAYS).to_csv(
-            rd(root, "datas/课表.csv"), index=False)
+        self.seed(root)
         assert bootstrap.infer_legacy_state(str(root)) is True
 
 
@@ -96,6 +95,10 @@ class TestSaveAll:
         "onduty_daily_template": ["扫", "扫"],
     }
 
+    def store(self, root):
+        from data.sqlite_store import SqliteStore
+        return SqliteStore(str(root / "classmanager.db"))
+
     def save(self, root, onduty=None):
         classlist = DataFrame(
             [["语文", "数学", "语文", "", ""]],
@@ -106,27 +109,47 @@ class TestSaveAll:
 
     def test_writes_names(self, root):
         self.save(root)
-        assert read_csv(rd(root, "datas/名单.csv"))["name"].tolist() == ["张三", "李四"]
+        store = self.store(root)
+        try:
+            assert store.load_names()["name"].tolist() == ["张三", "李四"]
+        finally:
+            store.close()
 
     def test_writes_classlist_with_five_columns(self, root):
         self.save(root)
-        df = read_csv(rd(root, "datas/课表.csv"))
-        assert list(df.columns) == WEEKDAYS
-        assert df.iloc[0, 0] == "语文"
+        store = self.store(root)
+        try:
+            df = store.load_classlist()
+            assert list(df.columns) == WEEKDAYS
+            assert df.iloc[0, 0] == "语文"
+        finally:
+            store.close()
 
     def test_courses_are_deduplicated(self, root):
         self.save(root)
-        rows = read_csv(rd(root, "datas/课程单.csv"))["课程"].tolist()
-        assert sorted(rows) == ["数学", "语文"]
+        store = self.store(root)
+        try:
+            rows = store.load_courses()["课程"].tolist()
+            assert sorted(rows) == ["数学", "语文"]
+        finally:
+            store.close()
 
     def test_writes_onduty_when_given(self, root):
         onduty = DataFrame({"2026-11-02": ["张三 扫"], "2026-11-03": ["李四 扫"]})
         self.save(root, onduty=onduty)
-        assert read_csv(rd(root, "datas/未来值日.csv")).shape[1] == 2
+        store = self.store(root)
+        try:
+            assert store.load_onduty().shape[1] == 2
+        finally:
+            store.close()
 
-    def test_no_onduty_file_when_omitted(self, root):
+    def test_no_onduty_when_omitted(self, root):
         self.save(root)
-        assert not (root / "datas/未来值日.csv").exists()
+        store = self.store(root)
+        try:
+            assert len(store.load_onduty()) == 0
+        finally:
+            store.close()
 
     def test_writes_settings(self, root):
         self.save(root)
@@ -166,7 +189,6 @@ class TestSaveAll:
         assert summary["courses"] == 2
 
 
-# ------------------------------------------------------------------ 备份/重置
 
 class TestBackupAndReset:
     def seed(self, root):
@@ -216,61 +238,47 @@ class TestResetKeepsApps:
     """重置默认保留应用链接（那是本机配置，不是班级数据）。"""
 
     def seed_with_apps(self, root):
-        (root / "datas/应用路径.csv").write_text(
-            "软件链接,path\n浏览器,C:/x.exe\n", encoding="utf-8")
-        (root / "datas/名单.csv").write_text("name\n张三\n", encoding="utf-8")
-        (root / "datas/settings.json").write_text(
-            json.dumps({"storage": "sqlite"}), encoding="utf-8")
+        from core.models import AppEntry
+        from data.sqlite_repo import SqliteRepository
+
+        repo = SqliteRepository(str(root / "classmanager.db"))
+        repo.replace_students(["张三"])
+        repo.replace_apps([AppEntry("浏览器", "C:/x.exe")])
+        repo.close()
         bootstrap.mark_initialized(str(root))
 
-    def test_apps_survive_by_default(self, root):
-        from data.store import CsvStore
+    def read_apps(self, root):
+        from data.sqlite_repo import SqliteRepository
+        repo = SqliteRepository(str(root / "classmanager.db"))
+        try:
+            return repo.list_apps()
+        finally:
+            repo.close()
 
+    def test_apps_survive_by_default(self, root):
         self.seed_with_apps(root)
         bootstrap.reset_all(str(root))
 
-        apps = CsvStore(str(root / "datas")).load_apps()
-        assert apps.iloc[0, 0] == "浏览器"
-        assert not (root / "datas/名单.csv").exists()
+        apps = self.read_apps(root)
+        assert apps[0].name == "浏览器"
+        assert self.read_students(root) == []
+
+    def read_students(self, root):
+        from data.sqlite_repo import SqliteRepository
+        repo = SqliteRepository(str(root / "classmanager.db"))
+        try:
+            return repo.list_students()
+        finally:
+            repo.close()
 
     def test_apps_can_be_dropped(self, root):
         self.seed_with_apps(root)
         bootstrap.reset_all(str(root), keep_apps=False)
-        assert not (root / "datas/应用路径.csv").exists()
-
-    def test_storage_mode_is_preserved(self, root):
-        self.seed_with_apps(root)
-        bootstrap.reset_all(str(root))
-        cfg = json.loads((root / "datas/settings.json").read_text(encoding="utf-8"))
-        assert cfg["storage"] == "sqlite"
+        assert self.read_apps(root) == []
 
     def test_other_settings_are_reset(self, root):
         (root / "datas/settings.json").write_text(
-            json.dumps({"storage": "csv", "class_short_name": "九班"}),
-            encoding="utf-8")
+            json.dumps({"class_short_name": "九班"}), encoding="utf-8")
         bootstrap.reset_all(str(root))
-        cfg = json.loads((root / "datas/settings.json").read_text(encoding="utf-8"))
+        cfg = read_json(root / "datas/settings.json")
         assert "class_short_name" not in cfg
-
-    def test_sqlite_mode_keeps_apps_in_new_db(self, root):
-        """sqlite 模式下删除的是整个 db，应用链接要写回新建的库。"""
-        from core.models import AppEntry
-        from data.sqlite_repo import SqliteRepository
-
-        db_path = root / "classmanager.db"
-        repo = SqliteRepository(str(db_path))
-        repo.replace_students(["张三"])
-        repo.replace_apps([AppEntry("浏览器", "C:/x.exe")])
-        repo.close()
-
-        (root / "datas/settings.json").write_text(
-            json.dumps({"storage": "sqlite"}), encoding="utf-8")
-
-        bootstrap.reset_all(str(root))
-
-        repo = SqliteRepository(str(db_path))
-        try:
-            assert repo.list_apps()[0].name == "浏览器"
-            assert repo.list_students() == []
-        finally:
-            repo.close()

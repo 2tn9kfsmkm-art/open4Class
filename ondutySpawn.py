@@ -183,14 +183,15 @@ def write_sample_group_csv(path: str) -> None:
 if __name__ == '__main__':
     from datetime import datetime
 
-    from config import FILE_DIR  # 只在命令行直跑时需要，避免 import 就扯上 config
+    from data.store import shared_store
 
-    names = read_names(FILE_DIR + '名单.csv')
+    store = shared_store()
+    names = store.load_names()['name'].tolist()
     df = build_onduty_df(
         start=datetime(2026, 10, 26),
         weeks=22, daily=5,
         names=names, jobs=DEFAULT_JOBS,
         skip_weekend=True,
     )
-    df.to_csv(FILE_DIR + '未来值日.csv', index=False)
+    store.save_onduty(df)
     print(f'generated {df.shape[1]} days, {len(names)} students')

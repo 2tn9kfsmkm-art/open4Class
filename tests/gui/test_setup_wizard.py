@@ -56,10 +56,15 @@ def test_full_walk_writes_all_data(tmp_dir):
     wizard._on_next()
 
     assert wizard.result() == QDialog.Accepted
-    datas = tmp_dir / "datas"
-    assert read_csv(datas / "名单.csv")["name"].tolist() == ["张三", "李四", "王五"]
-    assert read_csv(datas / "课表.csv").iloc[0, 0] == "语文"
-    assert (datas / "未来值日.csv").exists()
+
+    from data.sqlite_store import SqliteStore
+    store = SqliteStore(str(tmp_dir / "classmanager.db"))
+    try:
+        assert store.load_names()["name"].tolist() == ["张三", "李四", "王五"]
+        assert store.load_classlist().iloc[0, 0] == "语文"
+        assert len(store.load_onduty()) > 0
+    finally:
+        store.close()
     assert bootstrap.is_initialized(str(tmp_dir)) is True
 
 

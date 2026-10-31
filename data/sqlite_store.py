@@ -75,6 +75,19 @@ class SqliteStore(Store):
                     rows.append((weekday, lesson, text))
         self._repo.save_classlist_template(rows)
 
+    def load_classlist_for_date(self, d: date) -> list[str]:
+        return self._repo.get_classlist_for_date(d)
+
+    def save_classlist_override(self, d: date, courses: list[str]) -> None:
+        self._repo.save_classlist_override(
+            d, ['' if c is None else str(c) for c in courses])
+
+    def delete_classlist_override(self, d: date) -> None:
+        self._repo.delete_classlist_override(d)
+
+    def has_classlist_override(self, d: date) -> bool:
+        return self._repo.has_classlist_override(d)
+
     # ---------------- 值日 ----------------
     def load_onduty(self) -> DataFrame:
         entries = self._repo.list_onduty()

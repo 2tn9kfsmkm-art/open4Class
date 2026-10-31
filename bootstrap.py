@@ -41,10 +41,6 @@ def _dirs(root: str | None = None) -> dict:
         'backup': os.path.join(base, BACKUP_DIRNAME),
         'settings': os.path.join(datas, 'settings.json'),
         'data': os.path.join(datas, 'data.json'),
-        'names': os.path.join(datas, '名单.csv'),
-        'classlist': os.path.join(datas, '课表.csv'),
-        'courses': os.path.join(datas, '课程单.csv'),
-        'onduty': os.path.join(datas, '未来值日.csv'),
     }
 
 
@@ -92,44 +88,37 @@ def _clean(values) -> list:
     return result
 
 
-def _read_csv(path: str):
-    from pandas import read_csv
-    if not os.path.exists(path):
-        return None
-    try:
-        return read_csv(path, encoding=ENCODING)
-    except Exception:
-        return None
-
-
 def infer_legacy_state(root: str | None = None) -> bool:
-    """老用户推断：名单里有学生、且课表里有真实课程，即视为已初始化。
+    """老用户推断：数据库里已有学生和真实课表，就视为已初始化。
 
-    班里那台机器升级到带向导的版本时，不能因为缺少 setup.json 就被拦在向导里。
+    典型场景：老机器把 CSV 迁移进数据库后第一次启动，此时还没有 setup.json，
+    不应该被拦进向导。
     """
+    from data.sqlite_store import SqliteStore
+
     dirs = _dirs(root)
-
-    names = _read_csv(dirs['names'])
-    if names is None or len(names) == 0:
-        return False
-    if 'name' not in [str(c) for c in names.columns]:
-        return False
-    if not _clean(names['name'].tolist()):
+    db_path = os.path.join(dirs['base'], 'classmanager.db')
+    if not os.path.exists(db_path):
         return False
 
-    classlist = _read_csv(dirs['classlist'])
-    if classlist is None or classlist.empty:
+    store = None
+    try:
+        store = SqliteStore(db_path)
+        if len(store.load_names()) == 0:
+            return False
+        classlist = store.load_classlist()
+        if classlist.empty:
+            return False
+        return any(
+            str(v).strip() and str(v) != 'nan'
+            for v in classlist.values.flatten()
+        )
+    except Exception:                           # noqa: BLE001
         return False
-    # 课表骨架是 8 行全空，必须区分"有内容"和"只有表头"。
-    # 不能先 fillna('')：全空列是 float64，pandas 4 会直接报错。
-    def _cell(v):
-        return '' if v is None or isna(v) else str(v).strip()
+    finally:
+        if store is not None:
+            store.close()
 
-    filled = classlist.apply(lambda col: col.map(_cell))
-    if (filled == '').all().all():
-        return False
-    return True
-    return True
 
 
 # ---------------------------------------------------------------- 写入
@@ -137,15 +126,16 @@ def infer_legacy_state(root: str | None = None) -> bool:
 def _store_for(root: str | None, dirs: dict):
     """决定本次写入用哪个 Store。
 
-    - 传了 root（单元测试 / 指定目录）→ 该目录下的 CsvStore，互不干扰
-    - 否则用进程共享的 Store（跟随 settings.storage / 环境变量）
+    - 传了 root（单元测试 / 指定目录）→ 该目录下的独立数据库，互不干扰
+    - 否则用进程共享的 Store
     Returns:
         (store, owned)：owned 为真表示用完要 close。
     """
-    from data.store import CsvStore, shared_store
+    from data.sqlite_store import SqliteStore
+    from data.store import shared_store
 
     if root:
-        return CsvStore(dirs['datas']), True
+        return SqliteStore(os.path.join(dirs['base'], 'classmanager.db')), True
     return shared_store(), False
 
 
@@ -262,38 +252,25 @@ def _clear_dir(path: str, keep_dir: bool = True) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
-def _read_storage_mode(dirs: dict) -> str:
-    """当前存储方式（从 settings.json 读，缺省 csv）。"""
-    payload = _read_json(dirs['settings'], default={})
-    mode = str((payload or {}).get('storage', 'csv')).lower()
-    return mode if mode in ('csv', 'sqlite') else 'csv'
-
-
-def _collect_apps(dirs: dict, mode: str):
-    """把应用链接取出来（重置后要原样放回）。"""
+def _collect_apps(dirs: dict, mode: str = 'sqlite'):
+    """把应用链接取出来（重置后要原样放回）。数据只在数据库里。"""
     from pandas import DataFrame
 
-    try:
-        from data.sqlite_store import SqliteStore
-        from data.store import APPS_COLUMNS, CsvStore
+    from data.sqlite_store import SqliteStore
+    from data.store import APPS_COLUMNS
 
-        if mode == 'sqlite':
-            db_path = os.path.join(dirs['base'], 'classmanager.db')
-            # 库不存在时退回 CSV：settings 说 sqlite 但库还没建的情况也常见
-            if not os.path.exists(db_path):
-                return CsvStore(dirs['datas']).load_apps()
-            store = SqliteStore(db_path)
-        else:
-            store = CsvStore(dirs['datas'])
-        try:
-            return store.load_apps()
-        finally:
-            if mode == 'sqlite':
-                store.close()
-    except Exception:                           # noqa: BLE001
-        from pandas import DataFrame
-        from data.store import APPS_COLUMNS
+    db_path = os.path.join(dirs['base'], 'classmanager.db')
+    if not os.path.exists(db_path):
         return DataFrame(columns=APPS_COLUMNS)
+    store = None
+    try:
+        store = SqliteStore(db_path)
+        return store.load_apps()
+    except Exception:                           # noqa: BLE001
+        return DataFrame(columns=APPS_COLUMNS)
+    finally:
+        if store is not None:
+            store.close()
 
 
 def reset_all(root: str | None = None, keep_messages: bool = False,
@@ -314,8 +291,7 @@ def reset_all(root: str | None = None, keep_messages: bool = False,
     dirs = _dirs(root)
     backup = backup_all(root)
 
-    mode = _read_storage_mode(dirs)
-    apps = _collect_apps(dirs, mode) if keep_apps else None
+    apps = _collect_apps(dirs) if keep_apps else None
 
     _clear_dir(dirs['datas'])
     if not keep_messages:
@@ -336,24 +312,21 @@ def reset_all(root: str | None = None, keep_messages: bool = False,
             except OSError:
                 pass
 
-    # 放回应用链接（CSV 里始终留一份；sqlite 模式再写进新库）
+    # 放回应用链接（写进新建的数据库）
     if keep_apps and apps is not None and len(apps) > 0:
         try:
-            from data.store import CsvStore
-            CsvStore(dirs['datas']).save_apps(apps)
-            if mode == 'sqlite':
-                from data.sqlite_store import SqliteStore
-                db_path = os.path.join(dirs['base'], 'classmanager.db')
-                store = SqliteStore(db_path)
-                try:
-                    store.save_apps(apps)
-                finally:
-                    store.close()
+            from data.sqlite_store import SqliteStore
+            db_path = os.path.join(dirs['base'], 'classmanager.db')
+            store = SqliteStore(db_path)
+            try:
+                store.save_apps(apps)
+            finally:
+                store.close()
         except Exception as e:                  # noqa: BLE001
             print(f'[reset] 恢复应用链接失败: {e!r}')
 
-    # 保住存储方式：其余设置交给默认值（班级名、倒计时等重新配）
-    _write_json(dirs['settings'], {'storage': mode})
+    # 其余设置交给默认值（班级名、倒计时等重新配）
+    _write_json(dirs['settings'], {})
 
     # 丢掉共享 Store，避免继续持有已删除的数据库连接
     try:

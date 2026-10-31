@@ -54,6 +54,10 @@ class Repository(ABC):
     def delete_classlist_override(self, d: date) -> None:
         """删除某一天的临时课表。"""
 
+    @abstractmethod
+    def has_classlist_override(self, d: date) -> bool:
+        """某一天是否已有临时课表。"""
+
     # ---------------- 值日 ----------------
     @abstractmethod
     def list_onduty(self) -> list[OndutyEntry]:

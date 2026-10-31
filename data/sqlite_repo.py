@@ -145,6 +145,12 @@ class SqliteRepository(Repository):
         self._write(lambda conn: conn.execute(
             'DELETE FROM classlist_override WHERE date = ?', (_to_db(d),)))
 
+    def has_classlist_override(self, d: date) -> bool:
+        row = self._execute(
+            'SELECT 1 FROM classlist_override WHERE date = ? LIMIT 1',
+            (_to_db(d),)).fetchone()
+        return row is not None
+
     # ---------------- 值日 ----------------
     def list_onduty(self) -> list[OndutyEntry]:
         rows = self._execute(

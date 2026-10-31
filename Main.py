@@ -37,6 +37,17 @@ def ensure_data_json():
             json.dump({'last_login': datetime.today().strftime('%Y%m%d')}, f)
 
 
+def _save_today_classlist(df):
+    """把"今日课表"的编辑结果写成当天的临时课表（覆盖周模板）。"""
+    try:
+        if df.shape[1] == 0:
+            return
+        courses = [str(v) for v in df.iloc[:, 0].tolist()]
+        shared_store().save_classlist_override(today.date(), courses)
+    except Exception as e:                      # noqa: BLE001
+        print(f'[classlist] 保存临时课表失败: {e!r}')
+
+
 def _save_onduty_from_editor(df):
     """值日编辑器保存后把结果写回当前存储（SQLite 模式必需，CSV 模式重复写一次无妨）。"""
     try:
@@ -249,14 +260,16 @@ class Main(wn_Main, QMainWindow):
                     self.data['model_classlist_today'],
                     selected_index=selected_index,
                     filter=self.data['classes'], title='调整课表',
-                    savepath=classlist_path,
+                    savepath='',
+                    on_save=_save_today_classlist,
                     show_size=show_size, default_simple=True,
                     row_ops=True)                       # ← 允许加/删行
             else:
                 self.wn_classlist = TableEditor(
                     self.data['model_classlist_today'],
                     filter=self.data['classes'], title='调整课表',
-                    savepath=classlist_path,
+                    savepath='',
+                    on_save=_save_today_classlist,
                     default_simple=True, show_size=show_size,
                     row_ops=True)                       # ← 允许加/删行
             self.wn_classlist.exec_()
@@ -274,7 +287,7 @@ class Main(wn_Main, QMainWindow):
             self.wn_Onduty = TableEditor(
                 self.data['onduty_model'],
                 filter=self.data['stu_model']['name'], title='调整值日',
-                savepath=FILE_DIR + '未来值日.csv',
+                savepath='',
                 title_filter=QDateEditDelegate,
                 content_filter=content_delegate,
                 simple_show=5, default_simple=True, show_size='6x5',
@@ -299,7 +312,7 @@ class Main(wn_Main, QMainWindow):
                 self.data['onduty_model'],
                 selected_index=selected_index,
                 filter=self.data['stu_model']['name'], title='调整值日',
-                savepath=FILE_DIR + '未来值日.csv',
+                savepath='',
                 title_filter=QDateEditDelegate,
                 content_filter=content_delegate,
                 simple_show=5, default_simple=True, show_size='6x5',
@@ -359,12 +372,6 @@ if __name__ == '__main__':
         else:
             if not SetupWizard.run():
                 sys.exit(0)
-
-    # 存储自检：settings 里写了 sqlite 但数据库还空着、CSV 有数据时自动补迁移
-    from tools.storage_switch import ensure_storage_ready
-    ready_msg = ensure_storage_ready()
-    if ready_msg:
-        print(ready_msg)
 
     mainwindow = Main()
     mainwindow.showMaximized()
