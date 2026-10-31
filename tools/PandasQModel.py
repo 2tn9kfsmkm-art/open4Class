@@ -31,23 +31,29 @@ class DataFrameWS(DataFrame, QObject):
         if parent is None:
             return
 
-        if is_label:
-            (r0, c0), (r1, c1) = unpack_str_index(
-                key, (self.index, self.columns)
-            )
-        else:
-            (r0, c0), (r1, c1) = unpack_index(
-                key, (len(self), len(self.columns))
-            )
+        # 数据已经写进去了，这里只是通知视图刷新。
+        # 万一某个写入路径的索引形态解不出来（例如布尔掩码），
+        # 宁可不刷新也不能把写操作本身弄崩。
+        try:
+            if is_label:
+                (r0, c0), (r1, c1) = unpack_str_index(
+                    key, (self.index, self.columns)
+                )
+            else:
+                (r0, c0), (r1, c1) = unpack_index(
+                    key, (len(self), len(self.columns))
+                )
 
-        if getattr(parent, 'extraHeader', False):
-            r0 += 1
-            r1 += 1
+            if getattr(parent, 'extraHeader', False):
+                r0 += 1
+                r1 += 1
 
-        top_left = parent.index(r0, c0)
-        bottom_right = parent.index(r1, c1)
-        if top_left.isValid() and bottom_right.isValid():
-            parent.dataChanged.emit(top_left, bottom_right)
+            top_left = parent.index(r0, c0)
+            bottom_right = parent.index(r1, c1)
+            if top_left.isValid() and bottom_right.isValid():
+                parent.dataChanged.emit(top_left, bottom_right)
+        except Exception as e:
+            print(f'[PandasQModel] dataChanged 范围解析失败，已跳过刷新: {e!r}')
 
     class _LocIndexerWS(_LocIndexer):
         def __setitem__(self, key, value):
@@ -72,6 +78,25 @@ class DataFrameWS(DataFrame, QObject):
             result = super().__setitem__(key, value)
             self.obj._emit_data_changed(key, False)
             return result
+
+    # 下面四个属性是把上面的 WS indexer 真正"装上"的唯一入口。
+    # 之前只定义了子类却没有覆盖属性，pandas 仍然返回原生 indexer，
+    # 所以通过 df.loc/iloc/at/iat 写入时从来不会发 dataChanged。
+    @property
+    def loc(self):
+        return self._LocIndexerWS("loc", self)
+
+    @property
+    def iloc(self):
+        return self._iLocIndexerWS("iloc", self)
+
+    @property
+    def at(self):
+        return self._AtIndexerWS("at", self)
+
+    @property
+    def iat(self):
+        return self._iAtIndexerWS("iat", self)
 
 #class PandasQAbstractModel()
 
@@ -150,7 +175,7 @@ class PandasQItemModel(QAbstractItemModel):
         #如果要额外标题,那么实际显示的会多一行
     
     #获取表头数据(Qt的要求)
-    def headerData(self, section, orientation, role = Qt.ItemDataRole):
+    def headerData(self, section, orientation, role = Qt.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:#判断是不是正确的类型
             #判断是横表头还是纵表头
             if orientation == Qt.Orientation.Horizontal:#如果是横表头
@@ -177,7 +202,11 @@ class PandasQItemModel(QAbstractItemModel):
         if index.isValid() and role == Qt.ItemDataRole.EditRole:
             try:
                 if self.extraHeader and index.row() == 0:
-                    self._df.columns.values[index.column()] = value
+                    # pandas 3 里 df.columns.values 是只读的 StringArray，
+                    # 不能原地赋值；整体替换 columns 才能改列名
+                    new_columns = list(self._df.columns)
+                    new_columns[index.column()] = value
+                    self._df.columns = new_columns
                     self.headerDataChanged.emit(
                         Qt.Orientation.Horizontal,
                         index.column(),

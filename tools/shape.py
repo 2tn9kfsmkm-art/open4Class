@@ -112,6 +112,20 @@ def _label_pos(label, labels, end=False):
         raise KeyError(label)
 
 
+def _is_sequence_indexer(idx):
+    """是否是需要逐项解包的"多项索引"。
+
+    除了 list/tuple/range，还要认 pandas Index、numpy 数组这类可迭代对象 ——
+    df.loc[df.index, df.columns] = ... 这种写法传进来的就是 Index。
+    字符串、bytes、slice 是标量式索引，不能按迭代拆。
+    """
+    if isinstance(idx, (str, bytes, slice, type(None))):
+        return False
+    if isinstance(idx, (list, tuple, range)):
+        return True
+    return hasattr(idx, '__iter__')
+
+
 def _unpack_pos_indexer(idx, n):
     if idx is None:
         return 0, n - 1
@@ -120,7 +134,7 @@ def _unpack_pos_indexer(idx, n):
         stop = n if idx.stop is None else _norm_pos(idx.stop, n)
         end = stop - 1 if stop > start else start
         return min(start, end), max(start, end)
-    if isinstance(idx, (list, tuple, range)):
+    if _is_sequence_indexer(idx):
         pos = [_norm_pos(i, n) for i in idx]
         if not pos:
             return 0, 0
@@ -137,7 +151,7 @@ def _unpack_label_indexer(idx, labels):
         start = 0 if idx.start is None else _label_pos(idx.start, labels, end=False)
         stop = n - 1 if idx.stop is None else _label_pos(idx.stop, labels, end=True)
         return min(start, stop), max(start, stop)
-    if isinstance(idx, (list, tuple, range)):
+    if _is_sequence_indexer(idx):
         pos = []
         for i in idx:
             pos.append(_label_pos(i, labels, end=False))

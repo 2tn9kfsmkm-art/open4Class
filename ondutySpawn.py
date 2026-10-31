@@ -286,7 +286,9 @@ def compute_stats(df):
     counter = Counter()
     for col in df.columns:
         for cell in df[col]:
-            if not cell:
+            # 空单元格可能是 ''（生成时补的），也可能是 NaN（从 CSV 读回时），
+            # 后者用 `not cell` 判断不出来，会被当成名字 "nan" 统计进去
+            if cell is None or pd.isna(cell):
                 continue
             s = str(cell).strip()
             if not s:
