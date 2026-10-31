@@ -36,8 +36,10 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # --- 3. QApplication（必须早于项目模块导入）---
 from PyQt5.QtWidgets import QApplication  # noqa: E402
 
-if QApplication.instance() is None:
-    QApplication([])
+# 必须持有引用：PyQt 里 QApplication 的所有权在 Python 侧，
+# 不保存的话可能被 GC 掉，之后任何 QWidget 构造都会直接 abort
+# （"Must construct a QApplication before a QWidget"）。
+_APP = QApplication.instance() or QApplication([])
 
 
 @pytest.fixture
