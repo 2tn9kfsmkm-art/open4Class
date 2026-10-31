@@ -1,4 +1,4 @@
-# 路线图
+﻿# 路线图
 
 > 依据 `HANDOFF.md` 的蓝图，按当前代码的真实状态重排。**每个阶段结束打 tag，主线始终保持可运行。**
 
@@ -28,7 +28,7 @@
 | P3 | **首次启动向导（一期）** | 6 页向导：班级信息 → 名单 → 课表 → 值日 → 完成；支持设置里重置重跑；走 `bootstrap.save_all` 落盘 | 2–3 天 | ✅ `v0.7-wizard` |
 | P4 | core/ 抽取 | `onduty`/`weekday`/`shape` 纯函数化，覆盖率 ≥80% | 1–1.5 天 | ✅ `v0.8-core` |
 | P5 | Nuitka 通道 | 构建脚本、`.ico`、干净目录验证、产出可分发包 | 1 天 | 待做（onefile/standalone 待定） |
-| P6 | SQLite 数据层 | `Repository` + `SqliteRepository` + 迁移框架 + CSV→DB 脚本 + 业务接入 | 2 天 | 🟡 P6a ✅ `v0.9-data-layer`；P6b-1 ✅ `v0.10-store`；P6b-2 待做 |
+| P6 | SQLite 数据层 | `Repository` + `SqliteRepository` + 迁移框架 + CSV→DB 脚本 + 业务接入 | 2 天 | ✅ `v0.9-data-layer` / `v0.10-store` / `v0.11-sqlite-wired` |
 | P7 | 悬浮窗 + 托盘 | 最小化出侧边窗、托盘三菜单 | 1.5 天 | 待做 |
 | P8 | 向导二期 | 值日分组文件导入、导入格式规范文档、模板下载、从设置里重跑向导 | 1 天 | 待做 |
 | P9 | UI 细化 / PySide6 | 颜色 token、设置 Tab 移底部、目录重构、换 Qt 绑定 | ? | 挂起 |

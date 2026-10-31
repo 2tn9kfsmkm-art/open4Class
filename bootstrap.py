@@ -134,6 +134,21 @@ def infer_legacy_state(root: str | None = None) -> bool:
 
 # ---------------------------------------------------------------- 写入
 
+def _store_for(root: str | None, dirs: dict):
+    """决定本次写入用哪个 Store。
+
+    - 传了 root（单元测试 / 指定目录）→ 该目录下的 CsvStore，互不干扰
+    - 否则用进程共享的 Store（跟随 settings.storage / 环境变量）
+    Returns:
+        (store, owned)：owned 为真表示用完要 close。
+    """
+    from data.store import CsvStore, shared_store
+
+    if root:
+        return CsvStore(dirs['datas']), True
+    return shared_store(), False
+
+
 def save_all(info: dict, names, classlist, onduty=None,
              root: str | None = None) -> dict:
     """把向导收集到的内容一次性落盘，并写入初始化标记。
@@ -162,21 +177,26 @@ def save_all(info: dict, names, classlist, onduty=None,
         raise ValueError(f'课表需要 {len(CLASS_WEEKDAYS)} 列（周一~周五），实际 {cl.shape[1]} 列')
     cl.columns = CLASS_WEEKDAYS
     cl = cl.fillna('')
-    cl.to_csv(dirs['classlist'], index=False, encoding=ENCODING)
 
-    DataFrame({'name': clean_names}).to_csv(
-        dirs['names'], index=False, encoding=ENCODING)
+    # 五张主表经 Store 写入：CSV 模式落到 datas/*.csv，SQLite 模式进数据库。
+    # 传了 root（测试）就强制用该目录的 CSV，不碰全局存储。
+    store, owned = _store_for(root, dirs)
+    try:
+        store.save_classlist(cl)
+        store.save_names(DataFrame({'name': clean_names}))
 
-    courses = sorted({
-        str(v).strip()
-        for v in cl.values.flatten()
-        if str(v).strip()
-    })
-    DataFrame({'课程': courses}).to_csv(
-        dirs['courses'], index=False, encoding=ENCODING)
+        courses = sorted({
+            str(v).strip()
+            for v in cl.values.flatten()
+            if str(v).strip()
+        })
+        store.save_courses(DataFrame({'课程': courses}))
 
-    if onduty is not None and len(onduty) > 0:
-        DataFrame(onduty).to_csv(dirs['onduty'], index=False, encoding=ENCODING)
+        if onduty is not None and len(onduty) > 0:
+            store.save_onduty(DataFrame(onduty))
+    finally:
+        if owned:
+            store.close()
 
     # settings：现有值 → 默认值 → 本次向导填的值
     settings = copy.deepcopy(DEFAULT_USER_SETTINGS)
@@ -262,4 +282,22 @@ def reset_all(root: str | None = None, keep_messages: bool = False) -> str:
             os.remove(dirs['state'])
         except OSError:
             pass
+
+    # SQLite 模式下真正装数据的是数据根目录里的 db 文件，一并清掉
+    for db_name in ('classmanager.db', 'classmanager.db-wal',
+                    'classmanager.db-shm', 'classmanager.db.migrated_at'):
+        db_path = os.path.join(dirs['base'], db_name)
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+            except OSError:
+                pass
+
+    # 丢掉共享 Store，避免继续持有已删除的数据库连接
+    try:
+        from data.store import reset_shared_store
+        reset_shared_store()
+    except Exception:                           # noqa: BLE001
+        pass
+
     return backup

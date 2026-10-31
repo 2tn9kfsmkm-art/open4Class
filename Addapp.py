@@ -1,4 +1,4 @@
-import os
+﻿import os
 import subprocess
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox, QFileDialog
@@ -8,6 +8,7 @@ from pylnk3 import Lnk
 
 from windows.wn_AddApp import Ui_Dialog_AddApp as wn_AppApp
 from config import *
+from data.store import shared_store
 
 
 class AddApp(QDialog, wn_AppApp):
@@ -22,11 +23,7 @@ class AddApp(QDialog, wn_AppApp):
         self.apps = []
         self.option = self.type_cbb.currentIndex()
 
-        csv_path = FILE_DIR + '应用路径.csv'
-        if os.path.exists(csv_path):
-            self.df_apps = pd.read_csv(csv_path)
-        else:
-            self.df_apps = pd.DataFrame(columns=[self.COL_NAME, self.COL_PATH])
+        self.df_apps = shared_store().load_apps()
 
         # 拖放支持
         self.path_le.setAcceptDrops(True)
@@ -117,7 +114,7 @@ class AddApp(QDialog, wn_AppApp):
         new_df = pd.DataFrame(self.apps, columns=[self.COL_NAME, self.COL_PATH])
         self.df_apps = pd.concat([self.df_apps, new_df], ignore_index=True)
         self.df_apps = self.df_apps.drop_duplicates(subset=[self.COL_PATH], keep='last')
-        self.df_apps.to_csv(FILE_DIR + '应用路径.csv', index=False)
+        shared_store().save_apps(self.df_apps)
 
 
 class LoadApp(QThread):

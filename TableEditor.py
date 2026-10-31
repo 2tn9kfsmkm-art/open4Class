@@ -1,4 +1,4 @@
-﻿from PyQt5.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
+from PyQt5.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
                              QTableView)
 from PyQt5.QtCore import Qt, QDate, QModelIndex
 from PyQt5.QtGui import QDropEvent
@@ -25,7 +25,8 @@ class TableEditor(QDialog, wn_Onduty):
         simple_show=2, accept_simple=True, default_simple=True,
         show_size='5x5',
         col_min_width=None,
-        row_ops=False):  
+        row_ops=False,
+        on_save=None):  
 
         super().__init__()
         self.setupUi(self)
@@ -40,6 +41,7 @@ class TableEditor(QDialog, wn_Onduty):
         self.simple_show = simple_show
         self.savepath = savepath
         self.col_min_width = col_min_width
+        self.on_save = on_save
 
         if isinstance(data, DataFrame):
             self.data = PandasQItemModel(data=data)
@@ -239,6 +241,9 @@ class TableEditor(QDialog, wn_Onduty):
 
         if self.savepath:
             data_df.to_csv(self.savepath, header=True, index=False)
+        if self.on_save is not None:
+            # 供 SQLite 模式把结果同步进数据库；CSV 模式可以只依赖 savepath
+            self.on_save(data_df)
         self.operate = []
         self.setWindowTitle(self.title)
 

@@ -27,6 +27,7 @@ from tools.PandasQModel import PandasQItemModel, q_read_csv
 from tools.qss2qt import setQss
 from config import *
 from config import load_user_settings, get_onduty_jobs
+from data.store import shared_store
 
 
 def ensure_data_json():
@@ -34,6 +35,14 @@ def ensure_data_json():
     if not os.path.exists(path):
         with open(path, 'w', encoding=ENCODING) as f:
             json.dump({'last_login': datetime.today().strftime('%Y%m%d')}, f)
+
+
+def _save_onduty_from_editor(df):
+    """值日编辑器保存后把结果写回当前存储（SQLite 模式必需，CSV 模式重复写一次无妨）。"""
+    try:
+        shared_store().save_onduty(df)
+    except Exception as e:                      # noqa: BLE001
+        print(f'[onduty] 同步到存储失败: {e!r}')
 
 
 class Main(wn_Main, QMainWindow):
@@ -269,7 +278,8 @@ class Main(wn_Main, QMainWindow):
                 title_filter=QDateEditDelegate,
                 content_filter=content_delegate,
                 simple_show=5, default_simple=True, show_size='6x5',
-                col_min_width=220)
+                col_min_width=220,
+                on_save=_save_onduty_from_editor)
         else:
             today_df = self.data['model_onduty_today']._df
             rows = today_df.index[today_df.iloc[:, 0] == data]
@@ -293,7 +303,8 @@ class Main(wn_Main, QMainWindow):
                 title_filter=QDateEditDelegate,
                 content_filter=content_delegate,
                 simple_show=5, default_simple=True, show_size='6x5',
-                col_min_width=220)
+                col_min_width=220,
+                on_save=_save_onduty_from_editor)
 
         self.wn_Onduty.exec_()
         self.data.onduty_chain.load()

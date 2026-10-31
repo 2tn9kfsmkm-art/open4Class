@@ -15,6 +15,7 @@ from pandas import DataFrame, read_csv
 import pandas as pd
 
 import bootstrap
+from data.store import shared_store
 from windows.dropableTableView import (
     dragdropQTableView, QComboBoxDelegate, QNoDelegate,
 )
@@ -375,23 +376,24 @@ class OndutySpawnWidget(SettingsWidgetBase):
             QMessageBox.warning(self, '生成失败', f'{e!r}')
             return
 
-        out_path = FILE_DIR + '未来值日.csv'
-        if not self.overwrite_cb.isChecked() and os.path.exists(out_path):
+        store = shared_store()
+        has_existing = len(store.load_onduty()) > 0
+        if not self.overwrite_cb.isChecked() and has_existing:
             ans = QMessageBox.question(
-                self, '提示', '未来值日.csv 已存在，是否覆盖？',
+                self, '提示', '已有值日表，是否覆盖？',
                 QMessageBox.Yes | QMessageBox.No)
             if ans != QMessageBox.Yes:
                 return
 
         try:
-            df.to_csv(out_path, index=False)
+            store.save_onduty(df)
         except Exception as e:
             QMessageBox.warning(self, '写入失败', f'{e!r}')
             return
 
         QMessageBox.information(
             self, '完成',
-            f'{summary}\n已生成 {df.shape[1]} 天值日表\n{out_path}')
+            f'{summary}\n已生成 {df.shape[1]} 天值日表')
         self.changed.emit()
 
     # ---------- 文件打开 / 编辑器 ----------
@@ -407,17 +409,19 @@ class OndutySpawnWidget(SettingsWidgetBase):
 
     def _open_editor(self):
         from TableEditor import TableEditor
-        from tools.PandasQModel import q_read_csv
-        path = FILE_DIR + '未来值日.csv'
-        if not os.path.exists(path):
-            QMessageBox.information(self, '提示', '未来值日.csv 尚未生成')
-            return
+        from tools.PandasQModel import PandasQItemModel
+        store = shared_store()
         try:
-            model = q_read_csv(path)
+            df = store.load_onduty()
+            if len(df) == 0:
+                QMessageBox.information(self, '提示', '还没有值日表')
+                return
+            model = PandasQItemModel(data=df)
             editor = TableEditor(
                 model, title='直接编辑未来值日',
-                savepath=path, extraHeader=True,
+                savepath=FILE_DIR + '未来值日.csv', extraHeader=True,
                 default_simple=False, show_size='6x5',
+                on_save=store.save_onduty,
             )
             editor.exec_()
         except Exception as e:
@@ -491,14 +495,13 @@ class StudentListWidget(SettingsWidgetBase):
         self.save_btn.clicked.connect(self.save)
 
     def _load(self):
-        path = FILE_DIR + '名单.csv'
         try:
-            names = read_names(path) if os.path.exists(path) else []
+            names = shared_store().load_names()['name'].tolist()
         except Exception as e:
             QMessageBox.warning(self, '读取失败', f'{e!r}')
             names = []
         self.listw.clear()
-        self.listw.addItems(names)
+        self.listw.addItems([str(n) for n in names if str(n).strip()])
 
     def _on_add(self):
         it = QListWidgetItem('新学生')
@@ -551,13 +554,13 @@ class StudentListWidget(SettingsWidgetBase):
             QMessageBox.warning(self, '保存失败', f'存在重名：{dups}')
             return
 
-        DataFrame({'name': names}).to_csv(
-            FILE_DIR + '名单.csv', index=False, encoding=ENCODING)
+        store = shared_store()
+        store.save_names(DataFrame({'name': names}))
 
-        if os.path.exists(FILE_DIR + '未来值日.csv'):
+        if len(store.load_onduty()) > 0:
             QMessageBox.information(
                 self, '提示',
-                '名单已保存。\n已存在的未来值日.csv 仍按旧名单轮值，'
+                '名单已保存。\n已有的值日表仍按旧名单轮值，'
                 '如需重新生成，请到「值日生生成」Tab。')
         self.changed.emit()
 
@@ -806,26 +809,25 @@ class CourseEditorWidget(SettingsWidgetBase):
     # ---------- 加载 / 保存 ----------
     def _load(self):
         self.course_list.clear()
-        path = FILE_DIR + '课程单.csv'
-        if os.path.exists(path):
-            try:
-                cdf = read_csv(path)
-                if len(cdf.columns):
-                    self.course_list.addItems(
-                        [str(x) for x in cdf.iloc[:, 0] if pd.notna(x)])
-            except Exception as e:
-                QMessageBox.warning(self, '读取失败', f'课程单：{e!r}')
+        store = shared_store()
+        try:
+            cdf = store.load_courses()
+            if len(cdf.columns):
+                self.course_list.addItems(
+                    [str(x) for x in cdf.iloc[:, 0] if pd.notna(x)])
+        except Exception as e:
+            QMessageBox.warning(self, '读取失败', f'课程单：{e!r}')
 
-        path = FILE_DIR + '课表.csv'
         n_rows = self.DEFAULT_ROWS
         src = None
-        if os.path.exists(path):
-            try:
-                src = read_csv(path).reindex(columns=self.WEEKDAYS)
+        try:
+            loaded = store.load_classlist()
+            if len(loaded.columns):
+                src = loaded.reindex(columns=self.WEEKDAYS)
                 n_rows = max(1, len(src))
-            except Exception as e:
-                QMessageBox.warning(self, '读取失败', f'课表：{e!r}')
-                src = None
+        except Exception as e:
+            QMessageBox.warning(self, '读取失败', f'课表：{e!r}')
+            src = None
 
         self.model = PandasQItemModel(data=self._make_df(n_rows, src))
         self.table_view.setModel(self.model)
@@ -863,13 +865,13 @@ class CourseEditorWidget(SettingsWidgetBase):
 
     def save(self):
         courses = self._get_courses()
-        DataFrame({'课程': courses}).to_csv(
-            FILE_DIR + '课程单.csv', index=False, encoding=ENCODING)
+        store = shared_store()
+        store.save_courses(DataFrame({'课程': courses}))
 
         if self.model is None:
             return
         df = self.model._df.reindex(columns=self.WEEKDAYS)
-        df.to_csv(FILE_DIR + '课表.csv', index=False, encoding=ENCODING)
+        store.save_classlist(df)
 
         if os.path.exists(classlist_path) and wordday in df.columns:
             ans = QMessageBox.question(
