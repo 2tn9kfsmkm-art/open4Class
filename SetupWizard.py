@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QDialog,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -46,7 +47,7 @@ from ondutySpawn import (
 )
 
 PAGE_WIDTH = 900
-PAGE_HEIGHT = 620
+PAGE_HEIGHT = 700
 
 
 # ============================================================
@@ -392,29 +393,37 @@ class OndutyPage(_Page):
         self.skip_weekend_cb.setChecked(True)
         form.addRow('', self.skip_weekend_cb)
 
-        # ---- 分组模式专用 ----
+        self.body.addLayout(form)
+
+        # ---- 分组设置（独立分组框，整块显示/隐藏，避免表单行隐藏后仍占位） ----
+        self.group_box = QGroupBox('分组设置')
+        group_form = QFormLayout(self.group_box)
+        group_form.setLabelAlignment(Qt.AlignRight)
+
         self.group_count_sb = QSpinBox()
         self.group_count_sb.setRange(2, 12)
         self.group_count_sb.setValue(4)
         self.group_count_sb.setSuffix(' 组')
-        self.group_count_row = self._make_form_row(form, '分成几组：', self.group_count_sb)
+        group_form.addRow('分成几组：', self.group_count_sb)
 
         self.group_src_l = QLabel('当前：按名单顺序平均分组')
+        self.group_src_l.setWordWrap(True)
         self.group_src_l.setStyleSheet('font-size: 10pt; color: #666666;')
-        self.group_src_row = self._make_form_row(form, '分组来源：', self.group_src_l)
+        group_form.addRow('分组来源：', self.group_src_l)
 
         group_btns = QHBoxLayout()
         self.group_import_btn = QPushButton('导入分组表（Excel / CSV）')
         self.group_clear_btn = QPushButton('改回自动均分')
         for b in (self.group_import_btn, self.group_clear_btn):
+            b.setMinimumHeight(30)
             b.setStyleSheet('font-size: 11pt; padding: 4px 12px;')
             group_btns.addWidget(b)
         group_btns.addStretch(1)
-        group_btns_w = QWidget()
-        group_btns_w.setLayout(group_btns)
-        self.group_btns_row = self._make_form_row(form, '', group_btns_w)
+        self.group_btns_w = QWidget()
+        self.group_btns_w.setLayout(group_btns)
+        group_form.addRow('', self.group_btns_w)
 
-        self.body.addLayout(form)
+        self.body.addWidget(self.group_box)
 
         row = QHBoxLayout()
         self.refresh_btn = QPushButton('刷新预览')
@@ -424,7 +433,7 @@ class OndutyPage(_Page):
         self.body.addLayout(row)
 
         self.preview = QTextBrowser()
-        self.preview.setMinimumHeight(150)
+        self.preview.setMinimumHeight(90)
         self.body.addWidget(self.preview, 1)
 
         self.refresh_btn.clicked.connect(self.refresh_preview)
@@ -433,17 +442,6 @@ class OndutyPage(_Page):
         self.group_import_btn.clicked.connect(self._on_import_groups)
         self.group_clear_btn.clicked.connect(self._on_clear_groups)
         self._on_mode_changed()
-
-    def _make_form_row(self, form, label, widget):
-        """加一行到表单并记住行号，便于整行显示/隐藏。"""
-        form.addRow(label, widget)
-        return form.rowCount() - 1
-
-    def _set_row_visible(self, form, row_index, visible):
-        for role in (QFormLayout.LabelRole, QFormLayout.FieldRole):
-            item = form.itemAt(row_index, role)
-            if item is not None and item.widget() is not None:
-                item.widget().setVisible(visible)
 
     # ---------- 模式 / 分组 ----------
     def _on_mode_changed(self):
@@ -456,8 +454,7 @@ class OndutyPage(_Page):
             w.setEnabled(enabled)
         self.daily_sb.setEnabled(mode == 0)          # 分组模式下人数由组大小决定
 
-        for row in (self.group_count_row, self.group_src_row, self.group_btns_row):
-            self._set_row_visible(self.form, row, is_group)
+        self.group_box.setVisible(is_group)
         self._on_group_source_changed()
         self.refresh_preview()
 
@@ -625,7 +622,10 @@ class SetupWizard(QDialog):
         self.summary = None
 
         self.setWindowTitle('首次使用设置')
-        self.setFixedSize(PAGE_WIDTH, PAGE_HEIGHT)
+        # 高度按内容最挤的一页（值日页分组模式）留出余量。
+        # 不用 setFixedSize：内容超了就会被压扁（按钮曾因此变成一条线）。
+        self.setMinimumSize(PAGE_WIDTH, PAGE_HEIGHT)
+        self.resize(PAGE_WIDTH, PAGE_HEIGHT)
 
         self._build_layout()
 
