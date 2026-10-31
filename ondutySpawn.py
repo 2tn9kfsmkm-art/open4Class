@@ -47,6 +47,29 @@ def _looks_like_header(s: str) -> bool:
     return False
 
 
+def read_names_from_df(df) -> list:
+    """从已读入的表格中识别姓名列（CSV / Excel 共用）。
+
+    Args:
+        df: 已读入的表格（pandas DataFrame）。
+    Returns:
+        清洗后的姓名列表（去首尾空白、跳过空值）。
+    Raises:
+        ValueError: 表格没有可用的列。
+    """
+    if df is None or df.shape[1] == 0:
+        raise ValueError('表格中没有可识别的列')
+
+    # 1. 精确列名匹配
+    for col in df.columns:
+        if str(col).strip().lower() in _HEADER_KEYWORDS:
+            return _clean_names(df[col].tolist())
+
+    # 2. 兜底：取第一列
+    print(f'Warning: 未识别到 name/姓名 列，使用第一列 "{df.columns[0]}"')
+    return _clean_names(df.iloc[:, 0].tolist())
+
+
 def read_names(path: str) -> list:
     """智能读取名单：支持 name 列、姓名列、无表头单列、兜底第一列。"""
     if not os.path.exists(path):
@@ -57,23 +80,14 @@ def read_names(path: str) -> list:
     except Exception as e:
         raise ValueError(f'无法解析 CSV：{e!r}')
 
-    # 1. 精确列名匹配
-    for col in df.columns:
-        if str(col).strip().lower() in _HEADER_KEYWORDS:
-            return _clean_names(df[col].tolist())
-
-    # 2. 单列且列名不像表头 → 视为无表头
+    # 单列且列名不像表头 → 视为无表头，按无表头重读一次
     if len(df.columns) == 1:
         first_col = df.columns[0]
         if not _looks_like_header(first_col):
             df2 = pd.read_csv(path, header=None)
             return _clean_names(df2.iloc[:, 0].tolist())
 
-    # 3. 兜底：取第一列
-    if len(df.columns) == 0:
-        raise ValueError('CSV 中没有可识别的列')
-    print(f'Warning: 未识别到 name/姓名 列，使用第一列 "{df.columns[0]}"')
-    return _clean_names(df.iloc[:, 0].tolist())
+    return read_names_from_df(df)
 
 
 def write_sample_name_csv(path: str) -> None:
