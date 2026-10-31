@@ -1,0 +1,5 @@
+#title_l {
+    font-size: 40pt;
+    padding: 5px;
+    border-bottom: 2px solid #9b0d14;
+}

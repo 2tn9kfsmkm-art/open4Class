@@ -1,0 +1,18 @@
+# ClassManager 运行时依赖（Python 3.13.17，venv: .venv）
+# 由 .venv\Scripts\python -m pip freeze 生成，请勿手工改动版本号
+#
+# 注意：pandas 3.1 与最初开发时使用的 2.0.3 存在行为差异
+#   - 向 int64 列写入字符串会抛 TypeError（2.x 是警告后 upcast）
+#   - DataFrame.drop(inplace=True) 已标记废弃（pandas 4 移除）
+#   - 默认写时复制（CoW）、字符串 dtype 为 str
+# 如需回退到 2.x：.venv\Scripts\python -m pip install "pandas<3"
+
+numpy==2.5.4
+pandas==3.1.0
+pylnk3==0.4.3
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.2
+PyQt5_sip==12.20.0
+python-dateutil==3.0.0
+six==1.17.0
+tzdata==2026.6

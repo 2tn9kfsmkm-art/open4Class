@@ -1,0 +1,1133 @@
+import os
+from datetime import datetime
+from collections import Counter
+
+from PyQt5.QtWidgets import (
+    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea,
+    QLabel, QLineEdit, QPushButton, QSpinBox, QCheckBox, QToolButton,
+    QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,
+    QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QFrame,
+    QAbstractItemView, QHeaderView, QComboBox, QSizePolicy, QTextEdit,
+)
+from PyQt5.QtCore import Qt, QDate, pyqtSignal, QTimer
+from pandas import DataFrame, read_csv
+import pandas as pd
+
+from windows.dropableTableView import (
+    dragdropQTableView, QComboBoxDelegate, QNoDelegate,
+)
+from tools.PandasQModel import PandasQItemModel
+
+from config import (
+    FILE_DIR, ENCODING, classlist_path, wordday,
+    load_user_settings, save_user_settings,
+)
+from ondutySpawn import (
+    build_onduty_df, build_onduty_df_from_groups,
+    read_names, read_groups, compute_stats,
+    write_sample_name_csv, write_sample_group_csv, open_file_external,
+)
+from tools.SettingsWidgetBase import SettingsWidgetBase
+
+
+# ============================================================
+# Tab 1：值日生生成（现有功能 + 直接编辑按钮）
+# ============================================================
+class OndutySpawnWidget(SettingsWidgetBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._build_ui()
+        self.refresh_preview()
+
+    # ---------- UI ----------
+    def _build_ui(self):
+        cfg = load_user_settings()
+        layout = QVBoxLayout(self)
+        self.layout_form = QFormLayout()
+
+        self.start_date_de = QDateEdit(QDate.currentDate())
+        self.start_date_de.setCalendarPopup(True)
+        self.start_date_de.setDisplayFormat('yyyy-MM-dd')
+        self.layout_form.addRow('起始日期：', self.start_date_de)
+
+        self.weeks_sb = QSpinBox()
+        self.weeks_sb.setRange(1, 100)
+        self.weeks_sb.setValue(22)
+        self.weeks_sb.setSuffix(' 周')
+        self.layout_form.addRow('周数：', self.weeks_sb)
+
+        self.mode_cb = QComboBox()
+        self.mode_cb.addItems(['名单顺序轮值', '分组表格轮值'])
+        self.layout_form.addRow('生成模式：', self.mode_cb)
+
+        # 名单模式
+        self.name_row_widget = QWidget()
+        name_row = QHBoxLayout(self.name_row_widget)
+        name_row.setContentsMargins(0, 0, 0, 0)
+        self.name_le = QLineEdit(FILE_DIR + '名单.csv')
+        self.name_btn = QPushButton('...')
+        self.name_btn.setMinimumWidth(40)
+        self.name_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.sample_btn = QPushButton('样板')
+        self.sample_btn.setMinimumWidth(64)
+        self.sample_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        name_row.addWidget(self.name_le)
+        name_row.addWidget(self.name_btn)
+        name_row.addWidget(self.sample_btn)
+        self.layout_form.addRow('名单文件：', self.name_row_widget)
+
+        self.daily_sb = QSpinBox()
+        self.daily_sb.setRange(1, 20)
+        self.daily_sb.setValue(5)
+        self.daily_sb.setSuffix(' 人/天')
+        self.layout_form.addRow('每日人数：', self.daily_sb)
+
+        # 分组模式
+        self.group_row_widget = QWidget()
+        group_row = QHBoxLayout(self.group_row_widget)
+        group_row.setContentsMargins(0, 0, 0, 0)
+        self.group_le = QLineEdit(FILE_DIR + '分组.csv')
+        self.group_btn = QPushButton('...')
+        self.group_btn.setMinimumWidth(40)
+        self.group_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.group_sample_btn = QPushButton('样板')
+        self.group_sample_btn.setMinimumWidth(64)
+        self.group_sample_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        group_row.addWidget(self.group_le)
+        group_row.addWidget(self.group_btn)
+        group_row.addWidget(self.group_sample_btn)
+        self.layout_form.addRow('分组文件：', self.group_row_widget)
+
+        # 共享配置
+        self.jobs_enum_le = QLineEdit(','.join(cfg['onduty_jobs']))
+        self.layout_form.addRow('职务枚举：', self.jobs_enum_le)
+
+        self.jobs_le = QLineEdit(','.join(cfg['onduty_daily_template']))
+        self.layout_form.addRow('职务模板：', self.jobs_le)
+
+        self.skip_weekend_cb = QCheckBox('跳过周末（周一至周五）')
+        self.skip_weekend_cb.setChecked(True)
+        self.layout_form.addRow('', self.skip_weekend_cb)
+
+        self.overwrite_cb = QCheckBox('覆盖现有 未来值日.csv')
+        self.layout_form.addRow('', self.overwrite_cb)
+
+        layout.addLayout(self.layout_form)
+
+        # 高级选项
+        self._build_adv_panel(layout)
+
+        # 预览
+        layout.addWidget(QLabel('预览（前 5 天 + 统计）：'))
+        self.preview_tb = QTextBrowser()
+        self.preview_tb.setMinimumHeight(160)
+        layout.addWidget(self.preview_tb)
+
+        # 操作按钮
+        btn_row = QHBoxLayout()
+        self.refresh_btn = QPushButton('刷新预览')
+        self.spawn_btn = QPushButton('生成')
+        self.edit_btn = QPushButton('直接编辑未来值日')
+        self.open_csv_btn = QPushButton('打开值日生表')
+        for b in (self.refresh_btn, self.spawn_btn,
+                  self.edit_btn, self.open_csv_btn):
+            btn_row.addWidget(b)
+        btn_row.addStretch(1)
+        layout.addLayout(btn_row)
+
+        bottom_row = QHBoxLayout()
+        self.reset_btn = QPushButton('重置配置')
+        self.save_btn = QPushButton('保存配置')
+        bottom_row.addStretch(1)
+        bottom_row.addWidget(self.reset_btn)
+        bottom_row.addWidget(self.save_btn)
+        layout.addLayout(bottom_row)
+
+        # 连接
+        self.mode_cb.currentIndexChanged.connect(self._on_mode_changed)
+        self.name_btn.clicked.connect(self._choose_name)
+        self.sample_btn.clicked.connect(self._write_sample)
+        self.group_btn.clicked.connect(self._choose_group)
+        self.group_sample_btn.clicked.connect(self._write_group_sample)
+        self.refresh_btn.clicked.connect(self.refresh_preview)
+        self.spawn_btn.clicked.connect(self.generate)
+        self.edit_btn.clicked.connect(self._open_editor)
+        self.open_csv_btn.clicked.connect(self._open_onduty_csv)
+        self.reset_btn.clicked.connect(self.reset)
+        self.save_btn.clicked.connect(self.save)
+
+        self._on_mode_changed()
+
+    def _build_adv_panel(self, parent_layout):
+        self.adv_btn = QToolButton()
+        self.adv_btn.setText('▶ 高级选项')
+        self.adv_btn.setCheckable(True)
+        self.adv_btn.setChecked(False)
+        self.adv_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.adv_btn.setStyleSheet(
+            'QToolButton { border: none; font-weight: bold; padding: 4px 0; }')
+        self.adv_btn.toggled.connect(self._toggle_advanced)
+        parent_layout.addWidget(self.adv_btn)
+
+        self.adv_panel = QWidget()
+        adv = QFormLayout(self.adv_panel)
+        adv.setContentsMargins(20, 4, 0, 4)
+
+        self.offset_sb = QSpinBox()
+        self.offset_sb.setRange(0, 9999)
+        self.offset_sb.setValue(0)
+        self.offset_sb.setToolTip(
+            '名单模式：从第 N 位开始（0=首位）\n分组模式：从第 N 组开始')
+        adv.addRow('起始偏移：', self.offset_sb)
+
+        self.stride_sb = QSpinBox()
+        self.stride_sb.setRange(1, 9999)
+        self.stride_sb.setValue(1)
+        self.stride_sb.setToolTip(
+            '每次前进位数\n1=顺序；>1 可形成不同组合\n'
+            '注意：若与人数不互质，可能有部分人永远轮不到（统计会预警）')
+        adv.addRow('轮换步长：', self.stride_sb)
+
+        self.shuffle_cb = QCheckBox('生成前随机打乱（名单/组内顺序）')
+        adv.addRow('', self.shuffle_cb)
+
+        self.seed_sb = QSpinBox()
+        self.seed_sb.setRange(0, 999999)
+        self.seed_sb.setValue(0)
+        self.seed_sb.setToolTip('0 = 每次不同；填入固定值可复现结果')
+        adv.addRow('随机种子：', self.seed_sb)
+
+        adv.addRow(QLabel('跳过名单（每行一个，仅本次生成生效）：'))
+        self.skip_te = QTextEdit()
+        self.skip_te.setMaximumHeight(90)
+        self.skip_te.setPlaceholderText('例如：\n张三\n李四')
+        adv.addRow(self.skip_te)
+
+        self.adv_panel.setVisible(False)
+        parent_layout.addWidget(self.adv_panel)
+
+    def _toggle_advanced(self, checked):
+        self.adv_panel.setVisible(checked)
+        self.adv_btn.setText(('▼' if checked else '▶') + ' 高级选项')
+
+    def _set_row_visible(self, widget, visible):
+        widget.setVisible(visible)
+        lbl = self.layout_form.labelForField(widget)
+        if lbl is not None:
+            lbl.setVisible(visible)
+
+    def _on_mode_changed(self):
+        is_group = self.mode_cb.currentIndex() == 1
+        self._set_row_visible(self.name_row_widget, not is_group)
+        self._set_row_visible(self.daily_sb, not is_group)
+        self._set_row_visible(self.group_row_widget, is_group)
+        # 分组模式不需要每日人数、步长
+        self.stride_sb.setEnabled(not is_group)
+
+    # ---------- 选文件 / 样板 ----------
+    def _choose_name(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '选择名单文件', FILE_DIR, 'CSV (*.csv)')
+        if path:
+            self.name_le.setText(path)
+            self.refresh_preview()
+
+    def _choose_group(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '选择分组文件', FILE_DIR, 'CSV (*.csv)')
+        if path:
+            self.group_le.setText(path)
+            self.refresh_preview()
+
+    def _write_sample(self):
+        default_path = FILE_DIR + '名单样板.csv'
+        path, _ = QFileDialog.getSaveFileName(
+            self, '保存样板名单', default_path, 'CSV (*.csv)')
+        if not path:
+            return
+        try:
+            write_sample_name_csv(path)
+        except Exception as e:
+            QMessageBox.warning(self, '保存失败', f'{e!r}')
+            return
+        QMessageBox.information(self, '完成', f'样板已保存到：\n{path}')
+
+    def _write_group_sample(self):
+        default_path = FILE_DIR + '分组样板.csv'
+        path, _ = QFileDialog.getSaveFileName(
+            self, '保存样板分组', default_path, 'CSV (*.csv)')
+        if not path:
+            return
+        try:
+            write_sample_group_csv(path)
+        except Exception as e:
+            QMessageBox.warning(self, '保存失败', f'{e!r}')
+            return
+        QMessageBox.information(self, '完成', f'样板已保存到：\n{path}')
+
+    # ---------- 参数 / 数据 ----------
+    def _read_params(self):
+        start_date = self.start_date_de.date().toPyDate()
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        weeks = self.weeks_sb.value()
+        daily = self.daily_sb.value()
+        skip_weekend = self.skip_weekend_cb.isChecked()
+        name_path = self.name_le.text().strip()
+        group_path = self.group_le.text().strip()
+        jobs = [j.strip() for j in self.jobs_le.text().split(',') if j.strip()]
+        mode = self.mode_cb.currentIndex()
+        offset = self.offset_sb.value()
+        stride = self.stride_sb.value()
+        shuffle = self.shuffle_cb.isChecked()
+        seed = self.seed_sb.value() or None
+        skip_names = [s.strip() for s in self.skip_te.toPlainText().splitlines()
+                      if s.strip()]
+        return (start_dt, weeks, daily, skip_weekend,
+                name_path, group_path, jobs, mode,
+                offset, stride, shuffle, seed, skip_names)
+
+    def _build_dataframe(self):
+        (start_dt, weeks, daily, skip_weekend,
+         name_path, group_path, jobs, mode,
+         offset, stride, shuffle, seed, skip_names) = self._read_params()
+
+        if mode == 0:
+            names = read_names(name_path)
+            df = build_onduty_df(
+                start=start_dt, weeks=weeks, daily=daily,
+                names=names, jobs=jobs, skip_weekend=skip_weekend,
+                offset=offset, stride=stride,
+                skip_names=skip_names, shuffle=shuffle, seed=seed,
+            )
+            parts = [f'名单模式（{len(names)} 人']
+            if skip_names:
+                parts.append(f'跳过 {len(skip_names)} 人')
+            if offset:
+                parts.append(f'起始偏移 {offset}')
+            if stride > 1:
+                parts.append(f'步长 {stride}')
+            if shuffle:
+                parts.append(f'随机打乱(seed={seed or "每次不同"})')
+            parts.append('）')
+            return df, ''.join(parts)
+        else:
+            groups = read_groups(group_path)
+            df = build_onduty_df_from_groups(
+                start=start_dt, weeks=weeks,
+                groups=groups, jobs=jobs, skip_weekend=skip_weekend,
+                offset=offset, skip_names=skip_names,
+                shuffle=shuffle, seed=seed,
+            )
+            parts = [f'分组模式（{len(groups)} 组']
+            if skip_names:
+                parts.append(f'跳过 {len(skip_names)} 人')
+            if offset:
+                parts.append(f'起始组偏移 {offset}')
+            if shuffle:
+                parts.append(f'组内打乱(seed={seed or "每次不同"})')
+            parts.append('）')
+            return df, ''.join(parts)
+
+    # ---------- 预览 / 生成 ----------
+    def refresh_preview(self):
+        try:
+            df, summary = self._build_dataframe()
+        except Exception as e:
+            self.preview_tb.setPlainText(f'预览失败：{e!r}')
+            return
+
+        n_show = min(5, df.shape[1])
+        preview = df.iloc[:, :n_show].to_string()
+
+        counter, n_days = compute_stats(df)
+        stat_section = ''
+        if counter:
+            counts = list(counter.values())
+            min_c, max_c = min(counts), max(counts)
+            warnings = []
+            if min_c == 0:
+                warnings.append('有人 0 次值日（检查跳过/步长）')
+            if max_c - min_c > 1:
+                warnings.append(f'分布不均：最多 {max_c} 次、最少 {min_c} 次')
+            # 预期次数 & 偏差
+            expected = (n_days * df.shape[0]) / len(counter) if len(counter) else 0
+            warn_str = ('  ⚠ ' + '；'.join(warnings)) if warnings else ''
+            lines = '\n'.join(
+                f'  {name}: {c} 次'
+                for name, c in sorted(counter.items(), key=lambda x: -x[1])
+            )
+            stat_section = (
+                f'\n\n值日统计（{len(counter)} 人，'
+                f'平均 {expected:.1f} 次/人）{warn_str}\n{lines}')
+
+        self.preview_tb.setPlainText(
+            f'{summary}\n'
+            f'共 {n_days} 天 × {df.shape[0]} 人/天\n\n'
+            f'{preview}{stat_section}'
+        )
+
+    def generate(self):
+        try:
+            df, summary = self._build_dataframe()
+        except Exception as e:
+            QMessageBox.warning(self, '生成失败', f'{e!r}')
+            return
+
+        out_path = FILE_DIR + '未来值日.csv'
+        if not self.overwrite_cb.isChecked() and os.path.exists(out_path):
+            ans = QMessageBox.question(
+                self, '提示', '未来值日.csv 已存在，是否覆盖？',
+                QMessageBox.Yes | QMessageBox.No)
+            if ans != QMessageBox.Yes:
+                return
+
+        try:
+            df.to_csv(out_path, index=False)
+        except Exception as e:
+            QMessageBox.warning(self, '写入失败', f'{e!r}')
+            return
+
+        QMessageBox.information(
+            self, '完成',
+            f'{summary}\n已生成 {df.shape[1]} 天值日表\n{out_path}')
+        self.changed.emit()
+
+    # ---------- 文件打开 / 编辑器 ----------
+    def _open_onduty_csv(self):
+        path = FILE_DIR + '未来值日.csv'
+        if not os.path.exists(path):
+            QMessageBox.information(self, '提示', '未来值日.csv 尚未生成')
+            return
+        try:
+            open_file_external(path)
+        except Exception as e:
+            QMessageBox.warning(self, '打开失败', f'{e!r}')
+
+    def _open_editor(self):
+        from TableEditor import TableEditor
+        from tools.PandasQModel import q_read_csv
+        path = FILE_DIR + '未来值日.csv'
+        if not os.path.exists(path):
+            QMessageBox.information(self, '提示', '未来值日.csv 尚未生成')
+            return
+        try:
+            model = q_read_csv(path)
+            editor = TableEditor(
+                model, title='直接编辑未来值日',
+                savepath=path, extraHeader=True,
+                default_simple=False, show_size='6x5',
+            )
+            editor.exec_()
+        except Exception as e:
+            QMessageBox.warning(self, '打开失败', f'{e!r}')
+            return
+        self.changed.emit()
+
+    # ---------- 配置 ----------
+    def reset(self):
+        cfg = load_user_settings()
+        self.jobs_enum_le.setText(','.join(cfg['onduty_jobs']))
+        self.jobs_le.setText(','.join(cfg['onduty_daily_template']))
+        # 高级选项
+        self.offset_sb.setValue(0)
+        self.stride_sb.setValue(1)
+        self.shuffle_cb.setChecked(False)
+        self.seed_sb.setValue(0)
+        self.skip_te.clear()
+        self.refresh_preview()
+
+    def save(self):
+        enum = [s.strip() for s in self.jobs_enum_le.text().split(',') if s.strip()]
+        tpl = [s.strip() for s in self.jobs_le.text().split(',') if s.strip()]
+        if not enum:
+            QMessageBox.warning(self, '保存失败', '值日职务枚举不能为空')
+            return
+        if not tpl:
+            QMessageBox.warning(self, '保存失败', '每日值日模板不能为空')
+            return
+
+        cfg = load_user_settings()
+        cfg['onduty_jobs'] = enum
+        cfg['onduty_daily_template'] = tpl
+        save_user_settings(cfg)
+        self.changed.emit()
+
+
+
+# ============================================================
+# Tab 2：名单
+# ============================================================
+class StudentListWidget(SettingsWidgetBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel('学生名单（顺序即值日轮值顺序）'))
+        self.listw = QListWidget()
+        self.listw.setEditTriggers(QListWidget.DoubleClicked)
+        layout.addWidget(self.listw, 1)
+
+        btn_row = QHBoxLayout()
+        self.add_btn = QPushButton('新增')
+        self.del_btn = QPushButton('删除选中')
+        self.imp_btn = QPushButton('导入 CSV')
+        self.reset_btn = QPushButton('重置')
+        self.save_btn = QPushButton('保存')
+        for b in (self.add_btn, self.del_btn, self.imp_btn,
+                  self.reset_btn, self.save_btn):
+            btn_row.addWidget(b)
+        btn_row.addStretch(1)
+        layout.addLayout(btn_row)
+
+        self.add_btn.clicked.connect(self._on_add)
+        self.del_btn.clicked.connect(self._on_del)
+        self.imp_btn.clicked.connect(self._on_import)
+        self.reset_btn.clicked.connect(self._load)
+        self.save_btn.clicked.connect(self.save)
+
+    def _load(self):
+        path = FILE_DIR + '名单.csv'
+        try:
+            names = read_names(path) if os.path.exists(path) else []
+        except Exception as e:
+            QMessageBox.warning(self, '读取失败', f'{e!r}')
+            names = []
+        self.listw.clear()
+        self.listw.addItems(names)
+
+    def _on_add(self):
+        it = QListWidgetItem('新学生')
+        it.setFlags(it.flags() | Qt.ItemIsEditable)
+        self.listw.addItem(it)
+        self.listw.setCurrentItem(it)
+        self.listw.editItem(it)
+
+    def _on_del(self):
+        for it in self.listw.selectedItems():
+            self.listw.takeItem(self.listw.row(it))
+
+    def _on_import(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '导入名单', FILE_DIR, 'CSV (*.csv)')
+        if not path:
+            return
+        try:
+            names = read_names(path)
+        except Exception as e:
+            QMessageBox.warning(self, '读取失败', f'{e!r}')
+            return
+        ans = QMessageBox.question(
+            self, '确认',
+            f'将覆盖当前 {self.listw.count()} 条记录，继续？',
+            QMessageBox.Yes | QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+        self.listw.clear()
+        self.listw.addItems(names)
+
+    def _collect(self) -> list:
+        result = []
+        for i in range(self.listw.count()):
+            s = self.listw.item(i).text().strip()
+            if s:
+                result.append(s)
+        return result
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        names = self._collect()
+        if not names:
+            QMessageBox.warning(self, '保存失败', '名单不能为空')
+            return
+        dups = [n for n, c in Counter(names).items() if c > 1]
+        if dups:
+            QMessageBox.warning(self, '保存失败', f'存在重名：{dups}')
+            return
+
+        DataFrame({'name': names}).to_csv(
+            FILE_DIR + '名单.csv', index=False, encoding=ENCODING)
+
+        if os.path.exists(FILE_DIR + '未来值日.csv'):
+            QMessageBox.information(
+                self, '提示',
+                '名单已保存。\n已存在的未来值日.csv 仍按旧名单轮值，'
+                '如需重新生成，请到「值日生生成」Tab。')
+        self.changed.emit()
+
+class CourseComboBoxDelegate(QComboBoxDelegate):
+    """课程单元格编辑器：可下拉选，也可直接输入非选项。"""
+    def createEditor(self, parent, option, index):
+        editor = super().createEditor(parent, option, index)
+        editor.setInsertPolicy(QComboBox.NoInsert)
+        if editor.lineEdit():
+            editor.lineEdit().setPlaceholderText('选择或输入')
+        editor.setMinimumHeight(36)
+        editor.view().setMinimumWidth(180)
+        return editor
+
+
+# ============================================================
+# Tab 3：课程 & 课表
+# ============================================================
+class CourseEditorWidget(SettingsWidgetBase):
+    WEEKDAYS = ['周一', '周二', '周三', '周四', '周五']
+    DEFAULT_ROWS = 8
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.model = None
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+
+        layout.addWidget(QLabel('课程单（课程名列表，用于下拉候选）'))
+        self.course_list = QListWidget()
+        self.course_list.setEditTriggers(QListWidget.DoubleClicked)
+        layout.addWidget(self.course_list, 1)
+
+        row = QHBoxLayout()
+        self.add_course_btn = QPushButton('新增课程')
+        self.del_course_btn = QPushButton('删除选中')
+        row.addWidget(self.add_course_btn)
+        row.addWidget(self.del_course_btn)
+        row.addStretch(1)
+        layout.addLayout(row)
+
+        layout.addWidget(QLabel('周模板课表（双击进入编辑，可拖拽交换）'))
+        self.table_view = dragdropQTableView(self)
+        layout.addWidget(self.table_view, 2)
+
+        row2 = QHBoxLayout()
+        self.add_row_btn = QPushButton('增加一节')
+        self.del_row_btn = QPushButton('删除一节')
+        self.row_count_l = QLabel()
+        self.import_btn = QPushButton('导入课表...')
+        row2.addWidget(self.add_row_btn)
+        row2.addWidget(self.del_row_btn)
+        row2.addWidget(self.import_btn)
+        row2.addStretch(1)
+        row2.addWidget(self.row_count_l)
+        layout.addLayout(row2)
+
+        bottom = QHBoxLayout()
+        self.reset_btn = QPushButton('重置')
+        self.save_btn = QPushButton('保存')
+        bottom.addStretch(1)
+        bottom.addWidget(self.reset_btn)
+        bottom.addWidget(self.save_btn)
+        layout.addLayout(bottom)
+
+        self.add_course_btn.clicked.connect(self._on_add_course)
+        self.del_course_btn.clicked.connect(self._on_del_course)
+        self.add_row_btn.clicked.connect(self._add_row)
+        self.del_row_btn.clicked.connect(self._del_row)
+        self.reset_btn.clicked.connect(self._load)
+        self.save_btn.clicked.connect(self.save)
+        self.import_btn.clicked.connect(self._on_import_classlist)
+
+    # ---------- 课程单 ----------
+    def _on_add_course(self):
+        it = QListWidgetItem('新课程')
+        it.setFlags(it.flags() | Qt.ItemIsEditable)
+        self.course_list.addItem(it)
+        self.course_list.setCurrentItem(it)
+        self.course_list.editItem(it)
+
+    def _on_del_course(self):
+        for it in self.course_list.selectedItems():
+            self.course_list.takeItem(self.course_list.row(it))
+
+    def _get_courses(self):
+        return [self.course_list.item(i).text().strip()
+                for i in range(self.course_list.count())
+                if self.course_list.item(i).text().strip()]
+
+    WEEKDAY_ALIASES = {
+        '周一': ['周一', '星期一', '一', 'mon', 'monday', '周1', '星期1', '1'],
+        '周二': ['周二', '星期二', '二', 'tue', 'tuesday', '周2', '星期2', '2'],
+        '周三': ['周三', '星期三', '三', 'wed', 'wednesday', '周3', '星期3', '3'],
+        '周四': ['周四', '星期四', '四', 'thu', 'thursday', '周4', '星期4', '4'],
+        '周五': ['周五', '星期五', '五', 'fri', 'friday', '周5', '星期5', '5'],
+    }
+
+    def _normalize_weekday_columns(self, df):
+        """把任意表格规整为列名 周一~周五、共 5 列。无法识别时返回 None。"""
+        col_map = {}
+        for col in df.columns:
+            key = str(col).strip().lower()
+            for wd, aliases in self.WEEKDAY_ALIASES.items():
+                if wd in col_map:
+                    continue
+                if key in [a.lower() for a in aliases]:
+                    col_map[wd] = col
+                    break
+        if len(col_map) == 5:
+            out = DataFrame()
+            for wd in self.WEEKDAYS:
+                out[wd] = df[col_map[wd]].tolist()
+            return out
+        if df.shape[1] >= 5:
+            out = df.iloc[:, :5].copy()
+            out.columns = self.WEEKDAYS
+            return out
+        return None
+
+    def _on_import_classlist(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '导入课表', FILE_DIR,
+            '表格文件 (*.csv *.xlsx *.xls);;CSV (*.csv);;Excel (*.xlsx *.xls)')
+        if not path:
+            return
+
+        try:
+            if path.lower().endswith(('.xlsx', '.xls')):
+                src = pd.read_excel(path)
+            else:
+                src = pd.read_csv(path)
+        except Exception as e:
+            QMessageBox.warning(self, '读取失败', f'{e!r}')
+            return
+
+        normalized = self._normalize_weekday_columns(src)
+        if normalized is None or len(normalized) == 0:
+            QMessageBox.warning(
+                self, '导入失败',
+                '无法识别课表结构：需要 5 列（周一~周五）或至少 5 列数据')
+            return
+
+        n_rows = len(normalized)
+        ans = QMessageBox.question(
+            self, '确认导入',
+            f'将导入 {n_rows} 行课表，覆盖当前编辑内容，继续？',
+            QMessageBox.Yes | QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+
+        # 规整：NaN → '', index 设为 第N节
+        normalized.index = [f'第{i + 1}节' for i in range(n_rows)]
+        normalized = normalized.where(pd.notna(normalized), None)
+
+        # 询问是否把未知课程加入课程单
+        existing = set(self._get_courses())
+        new_courses = sorted({
+            str(v).strip()
+            for v in normalized.values.flatten()
+            if pd.notna(v) and str(v).strip() and str(v).strip() not in existing
+        })
+        if new_courses:
+            preview = '、'.join(new_courses[:10]) + ('…' if len(new_courses) > 10 else '')
+            ans = QMessageBox.question(
+                self, '发现新课程',
+                f'课表中出现课程单没有的课程：\n{preview}\n\n是否加入课程单？',
+                QMessageBox.Yes | QMessageBox.No)
+            if ans == QMessageBox.Yes:
+                for c in new_courses:
+                    self.course_list.addItem(c)
+
+        # 应用
+        self.model = PandasQItemModel(data=normalized)
+        self.table_view.setModel(self.model)
+        self._apply_touch_view()
+        self._refresh_buttons()
+        self._resize_later()
+
+        QMessageBox.information(self, '完成',
+                                f'已导入 {n_rows} 行课表，请点「保存」写回文件。')
+
+    # ---------- 模型 ----------
+    def _make_df(self, n_rows, src=None):
+        index = [f'第{i + 1}节' for i in range(n_rows)]
+        df = DataFrame(index=index, columns=self.WEEKDAYS)
+        if src is not None:
+            for i in range(min(n_rows, len(src))):
+                for c in range(len(self.WEEKDAYS)):
+                    v = src.iat[i, c] if c < src.shape[1] else None
+                    df.iat[i, c] = v if pd.notna(v) else None
+        return df
+
+    def _apply_touch_view(self):
+        tv = self.table_view
+        tv.setAcceptDrops(True)
+        tv.setDragEnabled(True)
+        tv.setDragDropMode(QAbstractItemView.DragDrop)         # ← 问题1
+        tv.setDefaultDropAction(Qt.MoveAction)
+        tv.setSelectionMode(QAbstractItemView.SingleSelection) # ← 问题1
+        tv.setEditTriggers(QAbstractItemView.DoubleClicked)    # ← 问题2
+        tv.setTabKeyNavigation(False)
+
+        tv.setTitleFilter(QNoDelegate)
+        tv.setContentFilter(CourseComboBoxDelegate)
+        tv.setupSelection(content_selections=self._get_courses())
+
+        tv.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        tv.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+
+    def _resize_later(self):
+        # 问题3：首开布局未刷新，等下一帧再算一次
+        def _do():
+            tv = self.table_view
+            if tv.model() is not None:
+                tv.resizeColumnsToContents()
+                tv.resizeRowsToContents()
+                tv.viewport().update()
+        QTimer.singleShot(0, _do)
+
+    def _refresh_buttons(self):
+        n = self.model.rowCount() if self.model else 0
+        self.row_count_l.setText(f'当前 {n} 节')
+
+    # ---------- 加载 / 保存 ----------
+    def _load(self):
+        self.course_list.clear()
+        path = FILE_DIR + '课程单.csv'
+        if os.path.exists(path):
+            try:
+                cdf = read_csv(path)
+                if len(cdf.columns):
+                    self.course_list.addItems(
+                        [str(x) for x in cdf.iloc[:, 0] if pd.notna(x)])
+            except Exception as e:
+                QMessageBox.warning(self, '读取失败', f'课程单：{e!r}')
+
+        path = FILE_DIR + '课表.csv'
+        n_rows = self.DEFAULT_ROWS
+        src = None
+        if os.path.exists(path):
+            try:
+                src = read_csv(path).reindex(columns=self.WEEKDAYS)
+                n_rows = max(1, len(src))
+            except Exception as e:
+                QMessageBox.warning(self, '读取失败', f'课表：{e!r}')
+                src = None
+
+        self.model = PandasQItemModel(data=self._make_df(n_rows, src))
+        self.table_view.setModel(self.model)
+        self._apply_touch_view()
+        self._refresh_buttons()
+        self._resize_later()
+
+    def _add_row(self):
+        if self.model is None:
+            return
+        n = self.model._df.shape[0]
+        new_row = DataFrame([[''] * len(self.WEEKDAYS)],
+                            columns=self.WEEKDAYS,
+                            index=[f'第{n + 1}节'])
+        self.model.concat([new_row])
+        self._refresh_buttons()
+        self._resize_later()
+
+    def _del_row(self):
+        if self.model is None:
+            return
+        df = self.model._df
+        if df.shape[0] <= 1:
+            return
+        self.model.beginResetModel()
+        try:
+            self.model._bind_df(df.iloc[:-1])
+        finally:
+            self.model.endResetModel()
+        self._refresh_buttons()
+        self._resize_later()
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        courses = self._get_courses()
+        DataFrame({'课程': courses}).to_csv(
+            FILE_DIR + '课程单.csv', index=False, encoding=ENCODING)
+
+        if self.model is None:
+            return
+        df = self.model._df.reindex(columns=self.WEEKDAYS)
+        df.to_csv(FILE_DIR + '课表.csv', index=False, encoding=ENCODING)
+
+        if os.path.exists(classlist_path) and wordday in df.columns:
+            ans = QMessageBox.question(
+                self, '确认',
+                f'今日临时课表已存在：\n{classlist_path}\n是否按新模板覆盖？',
+                QMessageBox.Yes | QMessageBox.No)
+            if ans == QMessageBox.Yes:
+                DataFrame({wordday: df[wordday].tolist()}).to_csv(
+                    classlist_path, index=False, encoding=ENCODING)
+
+        self.changed.emit()
+
+    def _on_add_course(self):
+            it = QListWidgetItem('新课程')
+            it.setFlags(it.flags() | Qt.ItemIsEditable)
+            self.course_list.addItem(it)
+            self.course_list.setCurrentItem(it)
+            self.course_list.editItem(it)
+    
+    def _on_del_course(self):
+        for it in self.course_list.selectedItems():
+            self.course_list.takeItem(self.course_list.row(it))
+
+
+# ============================================================
+# Tab 4/5：外部对话框入口
+# ============================================================
+class ExternalToolTab(QWidget):
+    clicked = pyqtSignal()
+
+    def __init__(self, title, desc, btn_text, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.addStretch(1)
+        t = QLabel(title)
+        t.setStyleSheet('font-size: 16pt; font-weight: bold;')
+        t.setAlignment(Qt.AlignCenter)
+        layout.addWidget(t)
+        d = QLabel(desc)
+        d.setAlignment(Qt.AlignCenter)
+        layout.addWidget(d)
+        btn = QPushButton(btn_text)
+        btn.setFixedWidth(220)
+        btn.clicked.connect(self.clicked)
+        layout.addWidget(btn, alignment=Qt.AlignCenter)
+        layout.addStretch(1)
+
+
+# ============================================================
+# Tab 6：通用
+# ============================================================
+class GeneralWidget(SettingsWidgetBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self):
+        layout = QFormLayout(self)
+
+        self.short_le = QLineEdit()
+        self.full_le = QLineEdit()
+        self.school_le = QLineEdit()
+        layout.addRow('班级短名：', self.short_le)
+        layout.addRow('班级全名：', self.full_le)
+        layout.addRow('学校名称：', self.school_le)
+
+        btn_row = QHBoxLayout()
+        self.reset_btn = QPushButton('重置')
+        self.save_btn = QPushButton('保存')
+        btn_row.addStretch(1)
+        btn_row.addWidget(self.reset_btn)
+        btn_row.addWidget(self.save_btn)
+        layout.addRow('', btn_row)
+
+        self.reset_btn.clicked.connect(self._load)
+        self.save_btn.clicked.connect(self.save)
+
+    def _load(self):
+        cfg = load_user_settings()
+        self.short_le.setText(cfg['class_short_name'])
+        self.full_le.setText(cfg['class_full_name'])
+        self.school_le.setText(cfg['school_name'])
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        # read-modify-write，避免覆盖其它 Tab 的字段（countdowns / onduty_* 等）
+        cfg = load_user_settings()
+        cfg['class_short_name'] = self.short_le.text().strip()
+        cfg['class_full_name'] = self.full_le.text().strip()
+        cfg['school_name'] = self.school_le.text().strip()
+        save_user_settings(cfg)
+        self.changed.emit()
+
+
+
+# ============================================================
+# Tab 7：倒计时编辑
+# ============================================================
+class CountdownWidget(SettingsWidgetBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel('倒计时列表（显示在主界面左侧栏，顺序即显示顺序）'))
+
+        self.table = QTableWidget(0, 2)
+        self.table.setHorizontalHeaderLabels(['名称', '日期 (YYYY-MM-DD)'])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        layout.addWidget(self.table, 1)
+
+        row = QHBoxLayout()
+        self.add_btn = QPushButton('新增')
+        self.del_btn = QPushButton('删除选中')
+        row.addWidget(self.add_btn)
+        row.addWidget(self.del_btn)
+        row.addStretch(1)
+        layout.addLayout(row)
+
+        bottom = QHBoxLayout()
+        self.reset_btn = QPushButton('重置')
+        self.save_btn = QPushButton('保存')
+        bottom.addStretch(1)
+        bottom.addWidget(self.reset_btn)
+        bottom.addWidget(self.save_btn)
+        layout.addLayout(bottom)
+
+        self.add_btn.clicked.connect(self._on_add)
+        self.del_btn.clicked.connect(self._on_del)
+        self.reset_btn.clicked.connect(self._load)
+        self.save_btn.clicked.connect(self.save)
+
+    def _on_add(self):
+        r = self.table.rowCount()
+        self.table.insertRow(r)
+        self.table.setItem(r, 0, QTableWidgetItem('新倒计时'))
+        self.table.setItem(r, 1, QTableWidgetItem(datetime.now().strftime('%Y-%m-%d')))
+
+    def _on_del(self):
+        rows = sorted({i.row() for i in self.table.selectedIndexes()}, reverse=True)
+        for r in rows:
+            self.table.removeRow(r)
+
+    def _load(self):
+        cfg = load_user_settings()
+        data = cfg.get('countdowns') or []
+        self.table.setRowCount(0)
+        for cd in data:
+            r = self.table.rowCount()
+            self.table.insertRow(r)
+            self.table.setItem(r, 0, QTableWidgetItem(cd.get('label', '')))
+            self.table.setItem(r, 1, QTableWidgetItem(cd.get('date', '')))
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        items = []
+        for r in range(self.table.rowCount()):
+            li = self.table.item(r, 0)
+            di = self.table.item(r, 1)
+            label = li.text().strip() if li else ''
+            date = di.text().strip() if di else ''
+            if not label or not date:
+                continue
+            try:
+                datetime.strptime(date, '%Y-%m-%d')
+            except ValueError:
+                QMessageBox.warning(
+                    self, '保存失败',
+                    f'第 {r + 1} 行日期格式错误："{date}"，应为 YYYY-MM-DD')
+                return
+            items.append({'label': label, 'date': date})
+
+        cfg = load_user_settings()
+        cfg['countdowns'] = items
+        save_user_settings(cfg)
+        self.changed.emit()
+
+
+
+# ============================================================
+# 设置对话框
+# ============================================================
+class SettingsDialog(QDialog):
+    changed = pyqtSignal(set)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('设置')
+
+        # 按屏幕尺寸自适应（原来固定 760x640 会溢出）
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            geo = screen.availableGeometry()
+            self.resize(
+                int(geo.width() * 0.85),
+                int(geo.height() * 0.85),
+            )
+        else:
+            self.resize(880, 720)
+
+        self._dirty = set()
+
+        layout = QVBoxLayout(self)
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs, 1)
+
+        self.onduty_widget = OndutySpawnWidget(self)
+        self.onduty_widget.changed.connect(lambda: self._dirty.add('onduty'))
+        self.tabs.addTab(self._wrap_scroll(self.onduty_widget), '值日生生成')
+
+        self.stu_widget = StudentListWidget(self)
+        self.stu_widget.changed.connect(lambda: self._dirty.add('stu'))
+        self.tabs.addTab(self._wrap_scroll(self.stu_widget), '名单')
+
+        self.course_widget = CourseEditorWidget(self)
+        self.course_widget.changed.connect(lambda: self._dirty.add('classlist'))
+        self.tabs.addTab(self._wrap_scroll(self.course_widget), '课程')
+
+        self.countdown_widget = CountdownWidget(self)
+        self.countdown_widget.changed.connect(
+            lambda: self._dirty.add('countdown'))
+        self.tabs.addTab(self._wrap_scroll(self.countdown_widget), '倒计时')
+
+        self.app_tab = ExternalToolTab(
+            '应用链接管理', '通过独立对话框管理（保存后主页图标会自动刷新）',
+            '打开应用链接管理...', parent=self)
+        self.app_tab.clicked.connect(self._open_addapp)
+        self.tabs.addTab(self._wrap_scroll(self.app_tab), '应用链接')
+
+        self.message_tab = ExternalToolTab(
+            '消息管理', '通过独立对话框管理（保存后主页消息会自动刷新）',
+            '打开消息编辑...', parent=self)
+        self.message_tab.clicked.connect(self._open_message)
+        self.tabs.addTab(self._wrap_scroll(self.message_tab), '消息')
+
+        self.general_widget = GeneralWidget(self)
+        self.general_widget.changed.connect(lambda: self._dirty.add('general'))
+        self.tabs.addTab(self._wrap_scroll(self.general_widget), '通用')
+
+        bottom = QHBoxLayout()
+        bottom.addStretch(1)
+        self.close_btn = QPushButton('关闭')
+        self.close_btn.clicked.connect(self.accept)
+        bottom.addWidget(self.close_btn)
+        layout.addLayout(bottom)
+
+    def _wrap_scroll(self, widget, min_width=0):
+        """把任意 QWidget 包成带滚动条的 Tab 内容。"""
+        sa = QScrollArea()
+        sa.setWidgetResizable(True)          # ← 关键：内容宽度跟随窗口
+        sa.setFrameShape(QFrame.NoFrame)
+        sa.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        sa.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        sa.setWidget(widget)
+        if min_width:
+            sa.setMinimumWidth(min_width)
+        return sa
+
+    def _open_addapp(self):
+        p = self.parent()
+        if p is not None and hasattr(p, 'openWn_AddApp'):
+            p.openWn_AddApp()
+
+    def _open_message(self):
+        p = self.parent()
+        if p is not None and hasattr(p, 'openWn_Message'):
+            p.openWn_Message()
+
+    def accept(self):
+        if self._dirty:
+            self.changed.emit(set(self._dirty))
+            self._dirty.clear()
+        super().accept()
