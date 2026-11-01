@@ -139,7 +139,7 @@ def _store_for(root: str | None, dirs: dict):
 
 
 def save_all(info: dict, names, classlist, onduty=None,
-             root: str | None = None) -> dict:
+             lesson_times=None, root: str | None = None) -> dict:
     """把向导收集到的内容一次性落盘，并写入初始化标记。
 
     Args:

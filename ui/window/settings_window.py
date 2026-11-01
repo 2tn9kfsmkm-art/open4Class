@@ -1011,14 +1011,36 @@ class GeneralWidget(SettingsWidgetBase):
         except Exception:                       # noqa: BLE001
             pass
 
+    def _ask_keep(self):
+        """勾选这次要**保留**的内容；没勾的会以空白形式进入向导。"""
+        dlg = QDialog(self)
+        dlg.setWindowTitle('重新运行设置向导')
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel('勾选要保留的现有内容；没勾的部分会在向导里清空重填。\n'
+                             '开始前仍会自动备份。'))
+        boxes = {}
+        for key, text in (
+            ('info', '班级信息（校名、班级名）'),
+            ('roster', '学生名单'),
+            ('classlist', '课程表'),
+            ('schedule', '作息时间'),
+        ):
+            cb = QCheckBox(text)
+            cb.setChecked(True)
+            lay.addWidget(cb)
+            boxes[key] = cb
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        lay.addWidget(buttons)
+        if not dlg.exec():
+            return None
+        return {k for k, cb in boxes.items() if cb.isChecked()}
+
     def _on_rerun_wizard(self):
-        ans = QMessageBox.question(
-            self, '重新运行设置向导',
-            '会先自动备份，然后用向导重新填写班级信息、名单、课表、值日。\n'
-            '各页已经预填当前内容，改完点完成即可；中途取消不会改动任何数据。\n\n'
-            '确定继续吗？',
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if ans != QMessageBox.Yes:
+        keep = self._ask_keep()
+        if keep is None:
             return
         try:
             backup = bootstrap.backup_all()
@@ -1026,7 +1048,7 @@ class GeneralWidget(SettingsWidgetBase):
             QMessageBox.critical(self, '备份失败', f'{e}')
             return
         from ui.window.setup_wizard import SetupWizard
-        wizard = SetupWizard(self, prefill=True)
+        wizard = SetupWizard(self, prefill=True, keep=keep)
         if not wizard.exec():
             return
         parent = self.parent()

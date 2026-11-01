@@ -365,6 +365,83 @@ class ClasslistPage(_Page):
 # ============================================================
 # ⑤ 值日安排
 # ============================================================
+class SchedulePage(_Page):
+    """作息时间：5 天各自可调，格式 07:40-08:20。"""
+
+    def __init__(self, wizard):
+        super().__init__(wizard)
+        lay = self.body
+        lay.addWidget(QLabel('每节课的起止时间，格式 07:40-08:20。\n'
+                             '五天可以不一样；留空表示那天没有这节课。'))
+        self.table = QTableWidget(10, 5)
+        self.table.setHorizontalHeaderLabels(['周一', '周二', '周三', '周四', '周五'])
+        self.table.verticalHeader().setDefaultSectionSize(34)
+        self._fill_default()
+        lay.addWidget(self.table, 1)
+
+        row = QHBoxLayout()
+        self.copy_btn = QPushButton('把周一复制到周二~周五')
+        self.copy_btn.clicked.connect(self._copy_monday)
+        self.add_btn = QPushButton('加一节')
+        self.add_btn.clicked.connect(lambda: self.table.insertRow(self.table.rowCount()))
+        self.del_btn = QPushButton('删末节')
+        self.del_btn.clicked.connect(self._del_last)
+        row.addWidget(self.copy_btn)
+        row.addWidget(self.add_btn)
+        row.addWidget(self.del_btn)
+        row.addStretch(1)
+        lay.addLayout(row)
+
+    def _fill_default(self):
+        from core.schedule import DEFAULT_LESSON_TIMES
+        for r, (start, end) in enumerate(DEFAULT_LESSON_TIMES):
+            for c in range(5):
+                self.table.setItem(r, c, QTableWidgetItem(f'{start}-{end}'))
+
+    def set_times(self, mapping: dict):
+        """mapping: {weekday: [(start, end), ...]}，weekday 1=周一。"""
+        if not mapping:
+            return
+        rows = max(len(v) for v in mapping.values())
+        self.table.setRowCount(rows)
+        for weekday in range(1, 6):
+            slots = mapping.get(weekday) or mapping.get(str(weekday)) or []
+            for r in range(rows):
+                text = ''
+                if r < len(slots):
+                    start, end = slots[r]
+                    text = f'{start}-{end}' if start and end else ''
+                self.table.setItem(r, weekday - 1, QTableWidgetItem(text))
+
+    def collect(self) -> dict:
+        result = {}
+        for weekday in range(1, 6):
+            slots = []
+            for r in range(self.table.rowCount()):
+                item = self.table.item(r, weekday - 1)
+                text = item.text().strip() if item else ''
+                if not text:
+                    continue
+                parts = text.replace('：', ':').replace('~', '-').split('-')
+                if len(parts) != 2:
+                    continue
+                slots.append((parts[0].strip(), parts[1].strip()))
+            if slots:
+                result[weekday] = slots
+        return result
+
+    def _copy_monday(self):
+        src_col = [self.table.item(r, 0).text() if self.table.item(r, 0) else ''
+                   for r in range(self.table.rowCount())]
+        for c in range(1, 5):
+            for r, text in enumerate(src_col):
+                self.table.setItem(r, c, QTableWidgetItem(text))
+
+    def _del_last(self):
+        if self.table.rowCount() > 1:
+            self.table.removeRow(self.table.rowCount() - 1)
+
+
 class OndutyPage(_Page):
     title = '值日安排'
     subtitle = '可以按名单顺序轮值，也可以按分组轮值。之后随时能在「设置 → 值日生生成」里重做。'
@@ -626,12 +703,13 @@ class DonePage(_Page):
 # 向导窗口
 # ============================================================
 class SetupWizard(QDialog):
-    STEPS = ['欢迎', '班级信息', '学生名单', '课程表', '值日安排', '完成']
+    STEPS = ['欢迎', '班级信息', '学生名单', '课程表', '作息时间', '值日安排', '完成']
 
-    def __init__(self, parent=None, root=None, prefill=False):
+    def __init__(self, parent=None, root=None, prefill=False, keep=None):
         super().__init__(parent)
         self._root = root
         self._prefill = prefill
+        self._keep = set(keep) if keep is not None else {'info', 'roster', 'classlist', 'schedule'}
         self.data = {}
         self.current = 0
         self.summary = None
@@ -650,6 +728,7 @@ class SetupWizard(QDialog):
             ClassInfoPage(self),
             RosterPage(self),
             ClasslistPage(self),
+            SchedulePage(self),
             OndutyPage(self),
             DonePage(self),
         ]
@@ -758,16 +837,22 @@ class SetupWizard(QDialog):
         from data.store import shared_store
 
         cfg = load_user_settings()
+        keep = self._keep
         info = self.pages[1]
-        info.school_le.setText(str(cfg.get('school_name', '')))
-        info.full_le.setText(str(cfg.get('class_full_name', '')))
-        info.short_le.setText(str(cfg.get('class_short_name', '')))
+        if 'info' in keep:
+            info.school_le.setText(str(cfg.get('school_name', '')))
+            info.full_le.setText(str(cfg.get('class_full_name', '')))
+            info.short_le.setText(str(cfg.get('class_short_name', '')))
 
         store = shared_store()
-        names = store.load_names()['name'].tolist()
-        self.pages[2].text_edit.setPlainText('\n'.join(str(n) for n in names))
+        if 'roster' in keep:
+            names = store.load_names()['name'].tolist()
+            self.pages[2].text_edit.setPlainText('\n'.join(str(n) for n in names))
 
-        df = store.load_classlist()
+        if 'schedule' in keep:
+            self.pages[4].set_times(store.load_lesson_times())
+
+        df = store.load_classlist() if 'classlist' in keep else store.load_classlist().iloc[0:0]
         page = self.pages[3]
         rows = max(df.shape[0], page.table.rowCount())
         page.table.setRowCount(rows)

@@ -45,14 +45,18 @@ def test_full_walk_writes_all_data(tmp_dir):
     classlist.table.setItem(0, 1, QTableWidgetItem("数学"))
     wizard._on_next()
 
-    # ⑤ 值日
+    # ⑤ 作息
     assert wizard.current == 4
-    onduty = wizard.pages[4]
+    wizard._on_next()
+
+    # ⑥ 值日
+    assert wizard.current == 5
+    onduty = wizard.pages[5]
     onduty.daily_sb.setValue(3)
     wizard._on_next()
 
-    # ⑥ 完成
-    assert wizard.current == 5
+    # ⑦ 完成
+    assert wizard.current == 6
     wizard._on_next()
 
     assert wizard.result() == QDialog.Accepted
@@ -111,7 +115,7 @@ def test_class_info_requires_fields(tmp_dir):
 def test_onduty_daily_cannot_exceed_roster(tmp_dir):
     wizard = build_wizard(tmp_dir)
     wizard.data["names"] = ["张三", "李四"]
-    page = wizard.pages[4]
+    page = wizard.pages[5]
     page.daily_sb.setValue(5)
     df, err = page.build()
     assert df is None and err is not None
@@ -120,7 +124,7 @@ def test_onduty_daily_cannot_exceed_roster(tmp_dir):
 def test_onduty_can_be_skipped(tmp_dir):
     wizard = build_wizard(tmp_dir)
     wizard.data["names"] = ["张三", "李四"]
-    page = wizard.pages[4]
+    page = wizard.pages[5]
     page.mode_cb.setCurrentIndex(2)
     df, err = page.build()
     assert df is None and err is None
@@ -130,7 +134,7 @@ def test_onduty_can_be_skipped(tmp_dir):
 def test_onduty_group_mode_auto_split(tmp_dir):
     wizard = build_wizard(tmp_dir)
     wizard.data["names"] = ["A", "B", "C", "D", "E"]
-    page = wizard.pages[4]
+    page = wizard.pages[5]
     page.mode_cb.setCurrentIndex(1)
     page.group_count_sb.setValue(2)
 
@@ -146,7 +150,7 @@ def test_onduty_group_mode_auto_split(tmp_dir):
 def test_onduty_group_mode_uses_imported_table(tmp_dir):
     wizard = build_wizard(tmp_dir)
     wizard.data["names"] = ["A", "B", "C"]
-    page = wizard.pages[4]
+    page = wizard.pages[5]
     page._imported_groups = {"甲组": ["A", "B"], "乙组": ["C"]}
     page.mode_cb.setCurrentIndex(1)
 
@@ -158,7 +162,7 @@ def test_onduty_group_mode_uses_imported_table(tmp_dir):
 
 def test_group_rows_hidden_outside_group_mode(tmp_dir, qapp):
     wizard = build_wizard(tmp_dir)
-    page = wizard.pages[4]
+    page = wizard.pages[5]
 
     page.mode_cb.setCurrentIndex(0)
     qapp.processEvents()
@@ -193,7 +197,7 @@ class TestLayoutStability:
     def test_window_size_is_stable_across_modes(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
         wizard._goto(4)
-        page = wizard.pages[4]
+        page = wizard.pages[5]
 
         page.mode_cb.setCurrentIndex(0)
         size_seq = (wizard.width(), wizard.height())
@@ -212,7 +216,7 @@ class TestLayoutStability:
 
     def test_group_box_toggles_with_mode(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
-        page = wizard.pages[4]
+        page = wizard.pages[5]
         page.mode_cb.setCurrentIndex(0)
         assert page.group_box.isVisibleTo(page) is False
         page.mode_cb.setCurrentIndex(1)
@@ -220,7 +224,7 @@ class TestLayoutStability:
 
     def test_content_lives_in_scroll_area(self, tmp_dir):
         wizard = SetupWizard(root=str(tmp_dir))
-        page = wizard.pages[4]
+        page = wizard.pages[5]
         assert page.scroll.widget() is page.content
         # 内容不会把页面撑破：滚动区自身可以被压到很小
         assert page.minimumSizeHint().height() < 400
