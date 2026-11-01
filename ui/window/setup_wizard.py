@@ -953,6 +953,7 @@ class SetupWizard(QDialog):
                 self.data['names'],
                 self.data['classlist'],
                 self.data.get('onduty'),
+                lesson_times=self.pages[4].collect(),
                 root=self._root,
             )
         except Exception as e:
