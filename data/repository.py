@@ -58,6 +58,15 @@ class Repository(ABC):
     def has_classlist_override(self, d: date) -> bool:
         """某一天是否已有临时课表。"""
 
+    # ---------------- 作息 ----------------
+    @abstractmethod
+    def list_lesson_times(self) -> dict[int, list[tuple[str, str]]]:
+        """{weekday: [(start, end), ...]}，weekday 1=周一。"""
+
+    @abstractmethod
+    def replace_lesson_times(self, mapping: dict[int, list[tuple[str, str]]]) -> None:
+        """整体替换作息表。"""
+
     # ---------------- 值日 ----------------
     @abstractmethod
     def list_onduty(self) -> list[OndutyEntry]:

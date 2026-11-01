@@ -108,3 +108,17 @@ def describe(state: dict, courses: list[str]) -> tuple[str, str]:
         nxt = course_at(state["next"])
         return "课间", "下一节 " + (nxt or "—")
     return "放学", "今天没有课了"
+
+
+def times_for_weekday(raw, weekday: int):
+    """从"按星期的作息表"里取出某一天的时间段。
+
+    raw 支持两种形态：
+        {1: [("07:40","08:20"), ...], ...}   按星期（新）
+        [("07:40","08:20"), ...]             所有人一样（旧）
+    weekday: 1=周一 … 7=周日；周末回退到周一那份。
+    """
+    if isinstance(raw, dict):
+        slots = raw.get(weekday) or raw.get(str(weekday)) or raw.get(1)
+        return slots or DEFAULT_LESSON_TIMES
+    return raw or DEFAULT_LESSON_TIMES

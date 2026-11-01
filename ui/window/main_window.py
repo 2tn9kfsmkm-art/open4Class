@@ -141,7 +141,7 @@ class Main(wn_Main, QMainWindow):
         self.mini = MiniController(
             courses_provider=self._today_courses,
             countdowns_provider=lambda: load_user_settings().get('countdowns'),
-            lesson_times_provider=lambda: load_user_settings().get('lesson_times'),
+            lesson_times_provider=self._today_lesson_times,
             on_back=self._restore_from_mini,
         )
 
@@ -157,6 +157,19 @@ class Main(wn_Main, QMainWindow):
             print(f'[reload] 重新加载失败: {e!r}')
 
     # ---------- 悬浮窗数据 ----------
+    def _today_lesson_times(self):
+        """优先用数据库里的作息（按星期），没有再退回 settings 里的旧配置。"""
+        from core.schedule import times_for_weekday
+        try:
+            raw = shared_store().load_lesson_times()
+            weekday = datetime.now().isoweekday()
+            if raw:
+                return times_for_weekday(raw, weekday)
+        except Exception:                       # noqa: BLE001
+            pass
+        return times_for_weekday(
+            load_user_settings().get('lesson_times'), datetime.now().isoweekday())
+
     def _today_courses(self) -> list:
         try:
             df = self.data['model_classlist_today']._df

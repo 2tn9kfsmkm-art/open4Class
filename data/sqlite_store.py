@@ -88,6 +88,13 @@ class SqliteStore(Store):
     def has_classlist_override(self, d: date) -> bool:
         return self._repo.has_classlist_override(d)
 
+    # ---------------- 作息 ----------------
+    def load_lesson_times(self):
+        return self._repo.list_lesson_times()
+
+    def save_lesson_times(self, mapping):
+        self._repo.replace_lesson_times(mapping)
+
     # ---------------- 值日 ----------------
     def load_onduty(self) -> DataFrame:
         entries = self._repo.list_onduty()

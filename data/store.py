@@ -63,6 +63,15 @@ class Store(ABC):
     def has_classlist_override(self, d: date) -> bool:
         """某天是否已有临时课表。"""
 
+    # ---- 作息 ----
+    @abstractmethod
+    def load_lesson_times(self) -> dict:
+        """{weekday: [(start, end), ...]}；空表示还没配。"""
+
+    @abstractmethod
+    def save_lesson_times(self, mapping: dict) -> None:
+        """整体替换作息表。"""
+
     # ---- 值日 ----
     @abstractmethod
     def load_onduty(self) -> DataFrame:

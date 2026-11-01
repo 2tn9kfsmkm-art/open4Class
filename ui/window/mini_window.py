@@ -29,21 +29,21 @@ _BASE_FLAGS = (
 
 _PANEL_QSS = f"""
 QWidget#mini_panel {{
-    background-color: {COLORS['primary']};
+    background-color: rgba(155, 13, 20, 0.78);
     border-radius: 16px;
 }}
 QWidget#mini_panel QLabel {{ color: {COLORS['white']}; background: transparent; }}
-QLabel#mini_time {{ font-size: {FONTS['font-h2']}; }}
-QLabel#mini_slot {{ font-size: {FONTS['font-small']}; color: {COLORS['primary-muted']}; }}
-QLabel#mini_subject {{ font-size: {FONTS['font-body']}; font-weight: bold; }}
-QLabel#mini_next {{ font-size: 9pt; color: {COLORS['primary-muted']}; }}
-QLabel#mini_countdown {{ font-size: 9pt; color: {COLORS['primary-muted']}; }}
+QLabel#mini_time {{ font-size: 34pt; font-weight: bold; }}
+QLabel#mini_slot {{ font-size: 13pt; color: #F2DCDD; }}
+QLabel#mini_subject {{ font-size: 20pt; font-weight: bold; }}
+QLabel#mini_next {{ font-size: 11pt; color: #F2DCDD; }}
+QLabel#mini_countdown {{ font-size: 11pt; color: #F2DCDD; }}
 QPushButton#mini_back {{
     background-color: rgba(255, 255, 255, 0.16);
     color: {COLORS['white']};
     border: none;
     border-radius: 8px;
-    font-size: {FONTS['font-small']};
+    font-size: 12pt;
     padding: 8px 0px;
 }}
 QPushButton#mini_back:pressed {{ background-color: rgba(0, 0, 0, 0.25); }}
@@ -51,12 +51,12 @@ QPushButton#mini_back:pressed {{ background-color: rgba(0, 0, 0, 0.25); }}
 
 _CHIP_QSS = f"""
 QWidget#mini_chip {{
-    background-color: {COLORS['primary']};
+    background-color: rgba(120, 120, 125, 0.72);
     border-radius: 14px;
 }}
 QWidget#mini_chip QLabel {{ color: {COLORS['white']}; background: transparent; }}
-QLabel#chip_slot {{ font-size: 9pt; color: {COLORS['primary-muted']}; }}
-QLabel#chip_subject {{ font-size: {FONTS['font-small']}; font-weight: bold; }}
+QLabel#chip_slot {{ font-size: 11pt; color: #EDEDED; }}
+QLabel#chip_subject {{ font-size: 15pt; font-weight: bold; }}
 """
 
 
@@ -81,7 +81,7 @@ class MiniPanel(QWidget):
         self.setWindowFlags(_BASE_FLAGS)
         # 出现时不抢焦点：老师正在打字也不会被打断
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
-        self.setFixedWidth(200)
+        self.setFixedWidth(220)
         self.setObjectName('mini_panel')
         self.setStyleSheet(_PANEL_QSS)
 
@@ -152,7 +152,7 @@ class MiniChip(QWidget):
         super().__init__(parent)
         self.setWindowFlags(_BASE_FLAGS)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
-        self.setFixedSize(96, 96)
+        self.setFixedSize(112, 112)
         self.setObjectName('mini_chip')
         self.setStyleSheet(_CHIP_QSS)
 

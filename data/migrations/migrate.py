@@ -14,6 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # (version, name, sql 文件名)
 MIGRATIONS: list[tuple[int, str, str]] = [
     (1, 'initial_schema', 'm0001_initial.sql'),
+    (2, 'lesson_times', 'm0002_lesson_times.sql'),
 ]
 
 

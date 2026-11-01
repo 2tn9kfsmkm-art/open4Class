@@ -151,6 +151,28 @@ class SqliteRepository(Repository):
             (_to_db(d),)).fetchone()
         return row is not None
 
+    # ---------------- 作息 ----------------
+    def list_lesson_times(self):
+        rows = self._execute(
+            'SELECT weekday, period_index, start_time, end_time'
+            ' FROM lesson_times ORDER BY weekday, period_index').fetchall()
+        result = {}
+        for weekday, _idx, start, end in rows:
+            result.setdefault(int(weekday), []).append((str(start), str(end)))
+        return result
+
+    def replace_lesson_times(self, mapping):
+        def _do(conn):
+            conn.execute('DELETE FROM lesson_times')
+            conn.executemany(
+                'INSERT INTO lesson_times (weekday, period_index, start_time, end_time)'
+                ' VALUES (?, ?, ?, ?)',
+                [(int(weekday), i + 1, str(start), str(end))
+                 for weekday, slots in mapping.items()
+                 for i, (start, end) in enumerate(slots)],
+            )
+        self._write(_do)
+
     # ---------------- 值日 ----------------
     def list_onduty(self) -> list[OndutyEntry]:
         rows = self._execute(
