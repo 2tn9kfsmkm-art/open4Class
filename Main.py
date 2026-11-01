@@ -358,6 +358,13 @@ class Main(wn_Main, QMainWindow):
 
 
 if __name__ == '__main__':
+    # Qt6 默认开启高 DPI 缩放（Qt5 默认关闭）。在本机 175% 缩放下，
+    # 界面整体放大 1.75 倍，行高从 57 变成 ~100 物理像素，课表装不下 12 行。
+    # 关掉它即可恢复迁移前（PyQt5）的观感与尺寸。
+    # 想用系统缩放的话，把这两行删掉。
+    os.environ.setdefault('QT_ENABLE_HIGHDPI_SCALING', '0')
+    os.environ.setdefault('QT_SCALE_FACTOR', '1')
+
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(RESOURCE_DIR + 'icon.png'))
     setQss(QSS_DIR + 'mainpage.qss', app)
