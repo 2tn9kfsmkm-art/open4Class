@@ -40,8 +40,10 @@ QPushButton#mini_back {{
     color: {COLORS['white']};
     border: none;
     border-radius: 8px;
-    font-size: 12pt;
-    padding: 8px 0px;
+    font-size: 13pt;
+    font-weight: bold;
+    margin: 0px;
+    padding: 0px;
 }}
 QPushButton#mini_back:pressed {{ background-color: rgba(0, 0, 0, 0.25); }}
 """
@@ -100,7 +102,7 @@ class MiniPanel(QWidget):
 
         self.back_pb = QPushButton('返回主界面')
         self.back_pb.setObjectName('mini_back')
-        self.back_pb.setFixedHeight(44)
+        self.back_pb.setFixedHeight(52)
         self.back_pb.setCursor(Qt.CursorShape.PointingHandCursor)   # 触摸目标
         self.back_pb.pressed.connect(self.back_requested.emit)
 
