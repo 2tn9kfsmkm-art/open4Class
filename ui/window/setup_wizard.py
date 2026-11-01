@@ -628,9 +628,10 @@ class DonePage(_Page):
 class SetupWizard(QDialog):
     STEPS = ['欢迎', '班级信息', '学生名单', '课程表', '值日安排', '完成']
 
-    def __init__(self, parent=None, root=None):
+    def __init__(self, parent=None, root=None, prefill=False):
         super().__init__(parent)
         self._root = root
+        self._prefill = prefill
         self.data = {}
         self.current = 0
         self.summary = None
@@ -654,6 +655,10 @@ class SetupWizard(QDialog):
         ]
         for page in self.pages:
             self.stack.addWidget(page)
+
+        if self._prefill:
+            self.setWindowTitle('重新设置（保留现有数据）')
+            self._apply_prefill()
 
         self._goto(0)
 
@@ -747,6 +752,37 @@ class SetupWizard(QDialog):
     def _on_back(self):
         if self.current > 0:
             self._goto(self.current - 1)
+
+    def _apply_prefill(self):
+        """把数据库里现有的内容填进各页，用户只需确认或局部修改。"""
+        from data.store import shared_store
+
+        cfg = load_user_settings()
+        info = self.pages[1]
+        info.school_le.setText(str(cfg.get('school_name', '')))
+        info.full_le.setText(str(cfg.get('class_full_name', '')))
+        info.short_le.setText(str(cfg.get('class_short_name', '')))
+
+        store = shared_store()
+        names = store.load_names()['name'].tolist()
+        self.pages[2].text_edit.setPlainText('\n'.join(str(n) for n in names))
+
+        df = store.load_classlist()
+        page = self.pages[3]
+        rows = max(df.shape[0], page.table.rowCount())
+        page.table.setRowCount(rows)
+        for r in range(df.shape[0]):
+            for c in range(min(len(CLASS_WEEKDAYS), df.shape[1])):
+                value = df.iat[r, c]
+                text = '' if value is None else str(value).strip()
+                if text in ('', 'nan'):
+                    continue
+                item = page.table.item(r, c)
+                if item is None:
+                    from PySide6.QtWidgets import QTableWidgetItem
+                    item = QTableWidgetItem()
+                    page.table.setItem(r, c, item)
+                item.setText(text)
 
     def _on_next(self):
         page = self.pages[self.current]

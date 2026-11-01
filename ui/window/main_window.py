@@ -145,6 +145,17 @@ class Main(wn_Main, QMainWindow):
             on_back=self._restore_from_mini,
         )
 
+    def reload_data(self):
+        """重新跑一遍数据加载（重跑向导后调用）。"""
+        try:
+            from data.store import reset_shared_store
+            reset_shared_store()
+            self._countdown_labels = []
+            self._render_countdowns()
+            self.data = loadPool(parent=self, widget=self)
+        except Exception as e:                  # noqa: BLE001
+            print(f'[reload] 重新加载失败: {e!r}')
+
     # ---------- 悬浮窗数据 ----------
     def _today_courses(self) -> list:
         try:

@@ -30,6 +30,7 @@ from ondutySpawn import (
     read_names, read_groups, compute_stats,
     write_sample_name_csv, write_sample_group_csv, open_file_external,
 )
+from services.imports import read_table, write_template
 from tools.SettingsWidgetBase import SettingsWidgetBase
 
 
@@ -318,7 +319,11 @@ class OndutySpawnWidget(SettingsWidgetBase):
             parts.append('）')
             return df, ''.join(parts)
         else:
-            groups = read_groups(group_path)
+            if group_path.lower().endswith(('.xlsx', '.xlsm')):
+                from core.onduty import read_groups_from_df
+                groups = read_groups_from_df(read_table(group_path))
+            else:
+                groups = read_groups(group_path)
             df = build_onduty_df_from_groups(
                 start=start_dt, weeks=weeks,
                 groups=groups, jobs=jobs, skip_weekend=skip_weekend,
@@ -974,12 +979,61 @@ class GeneralWidget(SettingsWidgetBase):
         danger_desc.setStyleSheet('font-size: 10pt; color: #666666;')
         layout.addRow(danger_desc)
 
+        self.template_btn = QPushButton('下载导入模板（Excel）…')
+        self.template_btn.clicked.connect(self._on_template)
+        layout.addRow('导入模板', self.template_btn)
+
+        self.rerun_btn = QPushButton('重新运行设置向导（保留现有数据）…')
+        self.rerun_btn.clicked.connect(self._on_rerun_wizard)
+        layout.addRow('', self.rerun_btn)
+
         self.wipe_btn = QPushButton('删除全部数据，重新开始首次使用向导…')
         self.wipe_btn.setStyleSheet(
             'background-color: #ffffff; color: #C62828; border: 1px solid #C62828;'
             'border-radius: 6px; padding: 6px 16px; font-size: 11pt;')
         layout.addRow('', self.wipe_btn)
         self.wipe_btn.clicked.connect(self._on_wipe_all)
+
+    # ---------- 导入模板 / 重跑向导 ----------
+    def _on_template(self):
+        default_path = FILE_DIR + '导入模板.xlsx'
+        path, _ = QFileDialog.getSaveFileName(
+            self, '保存导入模板', default_path, 'Excel (*.xlsx)')
+        if not path:
+            return
+        try:
+            write_template(path)
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.warning(self, '保存失败', f'{e!r}')
+            return
+        try:
+            open_file_external(path)
+        except Exception:                       # noqa: BLE001
+            pass
+
+    def _on_rerun_wizard(self):
+        ans = QMessageBox.question(
+            self, '重新运行设置向导',
+            '会先自动备份，然后用向导重新填写班级信息、名单、课表、值日。\n'
+            '各页已经预填当前内容，改完点完成即可；中途取消不会改动任何数据。\n\n'
+            '确定继续吗？',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+        try:
+            backup = bootstrap.backup_all()
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.critical(self, '备份失败', f'{e}')
+            return
+        from ui.window.setup_wizard import SetupWizard
+        wizard = SetupWizard(self, prefill=True)
+        if not wizard.exec():
+            return
+        parent = self.parent()
+        if hasattr(parent, 'reload_data'):
+            parent.reload_data()
+        QMessageBox.information(
+            self, '已完成', f'设置已更新。\n备份：{backup}')
 
     # ---------- 危险操作：三重确认 ----------
     def _on_wipe_all(self):
