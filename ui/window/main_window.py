@@ -192,17 +192,31 @@ class Main(wn_Main, QMainWindow):
     # ---------- 最小化 / 恢复 ----------
     def changeEvent(self, event):
         super().changeEvent(event)
-        if event.type() != QEvent.Type.WindowStateChange:
-            return
         mini = getattr(self, 'mini', None)
         if mini is None:
             return
-        if self.isMinimized():
-            self._was_maximized = self.isMaximized()
-            # 用 singleShot 让窗口状态先落定，再摆悬浮窗
-            QTimer.singleShot(0, mini.show_panel)
-        elif mini.is_visible():
-            mini.hide_all()
+
+        if event.type() == QEvent.Type.WindowStateChange:
+            if self.isMinimized():
+                self._was_maximized = self.isMaximized()
+                # 用 singleShot 让窗口状态先落定，再摆悬浮窗
+                QTimer.singleShot(0, mini.show_panel)
+            elif mini.is_visible() and self.isActiveWindow():
+                mini.hide_all()
+            return
+
+        # 主窗口被别的程序盖住（切到任务栏其它应用）时，也浮出小窗；
+        # 但本程序自己的对话框（设置、向导）弹出时不要跟着冒出来。
+        if event.type() == QEvent.Type.ActivationChange:
+            app = QApplication.instance()
+            app_active = (app is not None
+                          and app.applicationState() == Qt.ApplicationState.ApplicationActive)
+            if app_active:
+                return
+            if not self.isActiveWindow() and not self.isMinimized() and self.isVisible():
+                QTimer.singleShot(150, mini.show_panel)
+            elif self.isActiveWindow() and mini.is_visible():
+                mini.hide_all()
 
     def closeEvent(self, event):
         if getattr(self, '_really_quit', False):
