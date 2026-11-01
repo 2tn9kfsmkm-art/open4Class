@@ -73,7 +73,10 @@ class Main(wn_Main, QMainWindow):
         # 样式
         setQss(QSS_DIR + 'title.qss', self.title_l)
         setQss(QSS_DIR + 'tableview.qss', self.onduty_tv)
-        setQss(QSS_DIR + 'tableview.qss', self.classlist_tv)
+        # 课表行数多（10~12 行），单元格上下内边距比其他表格再收一点，
+        # 免得出现纵向滚动条
+        setQss(QSS_DIR + 'tableview.qss', self.classlist_tv,
+               extra='QTableView::item { padding: 6px 5px; }')
         setQss(QSS_DIR + 'applink.qss', self.applink_tv)
         setQss(QSS_DIR + 'sidebar.qss', self.sidebar_wg)
 
