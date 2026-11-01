@@ -178,6 +178,8 @@ class Main(wn_Main, QMainWindow):
             return []
 
     def _restore_from_mini(self):
+        # 先显式清掉最小化状态，否则 showMaximized 在部分环境下无效
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
         if getattr(self, '_was_maximized', False):
             self.showMaximized()
         else:

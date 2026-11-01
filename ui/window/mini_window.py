@@ -102,7 +102,7 @@ class MiniPanel(QWidget):
         self.back_pb.setObjectName('mini_back')
         self.back_pb.setFixedHeight(44)
         self.back_pb.setCursor(Qt.CursorShape.PointingHandCursor)   # 触摸目标
-        self.back_pb.clicked.connect(self.back_requested.emit)
+        self.back_pb.pressed.connect(self.back_requested.emit)
 
         for w in (self.time_l, self.slot_l, self.subject_l,
                   self.next_l, self.countdown_l):
@@ -116,6 +116,14 @@ class MiniPanel(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(155, 13, 20, 200))
         painter.drawRoundedRect(self.rect(), 16, 16)
+
+    def mousePressEvent(self, event):
+        # 兜底：面板没有焦点，某些环境下按钮收不到点击
+        if event.button() == Qt.MouseButton.LeftButton:
+            if event.position().y() >= self.height() - 60:
+                self.back_requested.emit()
+                return
+        super().mousePressEvent(event)
 
     # ---- 内容刷新 ----
     def refresh(self, now: datetime, courses, countdowns, lesson_times=None):
@@ -135,14 +143,14 @@ class MiniPanel(QWidget):
             self.next_l.setText('')
 
         self.countdown_l.setText(_nearest_countdown(now, countdowns))
-        self.adjustSize()
+        self.layout().activate()
+        self.setFixedHeight(self.sizeHint().height())
 
     # ---- 定位：主屏右侧垂直居中 ----
     def place(self):
         geo = _primary_geometry()
         if geo is None:
             return
-        self.adjustSize()
         x = geo.right() - self.width() - 24
         y = geo.top() + (geo.height() - self.height()) // 2
         self.move(x, y)
