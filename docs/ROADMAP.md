@@ -14,7 +14,7 @@
 |---|---|
 | 打包 | **Nuitka**（保持 HANDOFF D8）；onefile / standalone 待定，倾向 standalone |
 | `datas/` 是否进包（已废弃） | **不进包**。分发给其他班级时由首次启动向导收集，之后一律写 `%APPDATA%` |
-| PySide6 / UI 细化 | **挂起**，等 UI 想法定稿后再谈 |
+| PySide6 | **已迁移**（v0.16）；UI 细化仍挂起 |
 | 悬浮窗 | 要做（放在数据层之后） |
 | Excel 导入 | 需要，只支持 `.xlsx`（需新增 `openpyxl` 依赖） |
 
@@ -31,7 +31,7 @@
 | P6 | SQLite 数据层 | `Repository` + `SqliteRepository` + 迁移框架 + CSV→DB 脚本 + 业务接入 + 设置里可切换 | 2 天 | ✅ `v0.11-sqlite-wired` / `v0.12-storage-switch` |
 | P7 | 悬浮窗 + 托盘 | 最小化出侧边窗、托盘三菜单 | 1.5 天 | 待做 |
 | P8 | 向导二期 | 值日分组文件导入、导入格式规范文档、模板下载、从设置里重跑向导 | 1 天 | 待做 |
-| P9 | UI 细化 / PySide6 | 颜色 token、设置 Tab 移底部、目录重构、换 Qt 绑定 | ? | 挂起 |
+| P9 | UI 细化 / PySide6 | 颜色 token、设置 Tab 移底部、目录重构、换 Qt 绑定 | ? | 🟡 PySide6 已迁移（v0.16）；UI 细化仍待讨论 |
 | P10 | 文档 | `docs/USER_MANUAL.md` + HANDOFF 升 v1.1 | 0.5 天 | 待做 |
 
 ## 关键依赖与风险
@@ -46,7 +46,7 @@
 
 - 向导是否支持"以后从设置里重跑"（影响 P3 的窗口形态）
 - Nuitka 用 onefile 还是 standalone
-- PySide6 是否真的迁移（关键看分发范围与许可要求）
+- ~~PySide6 是否真的迁移~~ → **已迁移**（2026-11-01，`v0.16-pyside6`）
 
 ## 待办（Backlog）
 
