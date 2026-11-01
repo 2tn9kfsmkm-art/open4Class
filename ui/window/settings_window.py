@@ -980,6 +980,10 @@ class GeneralWidget(SettingsWidgetBase):
         danger_desc.setStyleSheet('font-size: 10pt; color: #666666;')
         layout.addRow(danger_desc)
 
+        self.console_btn = QPushButton('打开调试控制台（开发用）…')
+        self.console_btn.clicked.connect(self._on_open_console)
+        layout.addRow('', self.console_btn)
+
         self.quit_btn = QPushButton('退出程序')
         self.quit_btn.clicked.connect(self._on_quit)
         layout.addRow('', self.quit_btn)
@@ -998,6 +1002,27 @@ class GeneralWidget(SettingsWidgetBase):
             'border-radius: 6px; padding: 6px 16px; font-size: 11pt;')
         layout.addRow('', self.wipe_btn)
         self.wipe_btn.clicked.connect(self._on_wipe_all)
+
+    def _on_open_console(self):
+        """以带控制台的方式重启一份进程，方便看 print 输出。"""
+        import subprocess
+        import sys
+
+        import config
+        main_py = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))), 'main.py')
+        try:
+            subprocess.Popen(
+                ['cmd', '/c', 'start', '班级管理系统（调试）',
+                 sys.executable, main_py],
+                cwd=os.path.dirname(main_py),
+            )
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.warning(self, '打开失败', f'{e!r}')
+            return
+        QMessageBox.information(
+            self, '已打开',
+            '已在新窗口启动一份带控制台的程序。\n本窗口可以关掉了。')
 
     def _on_quit(self):
         main = self.parent()
