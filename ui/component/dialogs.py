@@ -109,8 +109,11 @@ class wn_random(showDialog):
     def __init__(self, parent=None, data=None):
         super().__init__(parent)
         self.data = data if data is not None else []
-        # 随机点人是要投到教室大屏上给全班看的，不能跟着对话框的 11pt 缩小
-        self.setStyleSheet('* { font-size: 24pt; }')
+        # 随机点人是要投到教室大屏上给全班看的：
+        # 名字是主角（更大更粗），按钮退居次要，避免视觉重心跑到按钮上。
+        self.setStyleSheet(
+            'QLabel { font-size: 40pt; font-weight: bold; }'
+            'QPushButton { font-size: 20pt; font-weight: normal; }')
         self.setupRandom()
 
     def setupRandom(self):

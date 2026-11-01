@@ -315,7 +315,7 @@ class PandasQItemModel(QAbstractItemModel):
         return self.createIndex(row, column)
     
     #返回每父类(暂时不用)(Qt要求)
-    def parent(self, index):
+    def parent(self, index=None):
         return QModelIndex()
     
     #每一个单元格的"标志"(Qt要求)

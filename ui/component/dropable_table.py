@@ -204,9 +204,14 @@ class OndutyContentDelegate(QtWidgets.QStyledItemDelegate):
 
     def createEditor(self, parent, option, index):
         w = QtWidgets.QWidget(parent)
+        # 两个可编辑下拉框挤在窄单元格里时，Qt6 的箭头会把文字吃掉；
+        # 收紧箭头宽度、给输入区留出空间。
+        w.setStyleSheet(
+            'QComboBox { padding: 0px 2px; }'
+            'QComboBox::drop-down { width: 18px; border: none; }')
         lay = QtWidgets.QHBoxLayout(w)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(2)
+        lay.setContentsMargins(2, 0, 2, 0)
+        lay.setSpacing(4)
 
         name_cb = self._make_combo(w, self.names, '姓名')
         name_cb.setMinimumWidth(120)
@@ -247,6 +252,28 @@ class OndutyContentDelegate(QtWidgets.QStyledItemDelegate):
 
     def updateEditorGeometry(self, editor, option, index):
         rect = QtCore.QRect(option.rect)
-        if rect.height() < 28:
-            rect.setHeight(28)
+        if rect.height() < 34:
+            rect.setHeight(34)
+        # 单元格通常放不下「姓名 + 职务」两个下拉，编辑器允许压到邻格上
+        if rect.width() < 260:
+            rect.setWidth(260)
         editor.setGeometry(rect)
+
+
+class ClickToClearFilter(QtCore.QObject):
+    """点表格空白处时清除选中/焦点。
+
+    Qt 的 QTableView 默认只在点中单元格时改当前项，
+    点空白不会清掉上一次的选中框，视觉上像"卡住了"。
+    """
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            view = obj.parent()
+            if view is None or not hasattr(view, 'indexAt'):
+                return False
+            if not view.indexAt(event.pos()).isValid():
+                view.clearSelection()
+                view.setCurrentIndex(QtCore.QModelIndex())
+                view.clearFocus()
+        return False

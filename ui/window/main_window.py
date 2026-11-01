@@ -12,7 +12,9 @@ from PySide6.QtGui import QPixmap, QIcon
 from numpy import where
 
 from windows.wn_Main import Ui_MainWindow as wn_Main
-from ui.component.dropable_table import QDateEditDelegate, OndutyContentDelegate
+from ui.component.dropable_table import (
+    ClickToClearFilter, QDateEditDelegate, OndutyContentDelegate,
+)
 
 from ui.window.add_app_dialog import AddApp, LoadApp
 import bootstrap
@@ -103,6 +105,11 @@ class Main(wn_Main, QMainWindow):
         self.random_pb.clicked.connect(self.openWn_random)
         self.message_tb.mouseDoubleClickEvent = self._on_message_double_click
         self.icon_l.clicked.connect(self.open_settings)
+
+        # 点表格空白处清除选中（Qt 默认不清，选中框会一直留着）
+        self._clear_filter = ClickToClearFilter(self)
+        for _tv in (self.onduty_tv, self.classlist_tv):
+            _tv.viewport().installEventFilter(self._clear_filter)
 
         # 数据加载
         self.data = loadPool(parent=self, widget=self)
@@ -277,6 +284,8 @@ class Main(wn_Main, QMainWindow):
                     row_ops=True)                       # ← 允许加/删行
             self.wn_classlist.exec()
             self.data.classlist_chain.play(self)
+            self.classlist_tv.clearSelection()
+            self.classlist_tv.setCurrentIndex(QModelIndex())
 
     def openWn_Onduty(self, stu: QModelIndex|None = None):
         if stu is None:
@@ -326,6 +335,9 @@ class Main(wn_Main, QMainWindow):
         self.data.onduty_chain.load()
         self.data.onduty_chain.process()
         self.data.onduty_chain.play(self)
+        # 编辑完清掉选中框，避免看起来"卡在某一格"
+        self.onduty_tv.clearSelection()
+        self.onduty_tv.setCurrentIndex(QModelIndex())
     def openWn_AddApp(self, urls=None):
         self.wn_AddApp = AddApp(self, urls=urls)
         if self.wn_AddApp.exec() == QDialog.Accepted:
