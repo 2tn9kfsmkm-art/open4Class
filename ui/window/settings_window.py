@@ -980,6 +980,10 @@ class GeneralWidget(SettingsWidgetBase):
         danger_desc.setStyleSheet('font-size: 10pt; color: #666666;')
         layout.addRow(danger_desc)
 
+        self.quit_btn = QPushButton('退出程序')
+        self.quit_btn.clicked.connect(self._on_quit)
+        layout.addRow('', self.quit_btn)
+
         self.template_btn = QPushButton('下载导入模板（Excel）…')
         self.template_btn.clicked.connect(self._on_template)
         layout.addRow('导入模板', self.template_btn)
@@ -994,6 +998,14 @@ class GeneralWidget(SettingsWidgetBase):
             'border-radius: 6px; padding: 6px 16px; font-size: 11pt;')
         layout.addRow('', self.wipe_btn)
         self.wipe_btn.clicked.connect(self._on_wipe_all)
+
+    def _on_quit(self):
+        main = self.parent()
+        if hasattr(main, 'quit_app'):
+            main.quit_app()
+        else:
+            from PySide6.QtWidgets import QApplication
+            QApplication.instance().quit()
 
     # ---------- 导入模板 / 重跑向导 ----------
     def _on_template(self):

@@ -91,10 +91,12 @@ class Main(wn_Main, QMainWindow):
 
         # 侧栏最小化按钮：倒计时下方、设置入口上方
         self.mini_pb = QPushButton('最小化')
-        self.mini_pb.setMinimumHeight(44)          # 触摸目标
+        self.mini_pb.setMinimumHeight(36)          # 触摸目标
+        self.mini_pb.setStyleSheet('font-size: 12pt; color: #F2DCDD;')
         self.mini_pb.setCursor(Qt.CursorShape.PointingHandCursor)
         self.mini_pb.clicked.connect(self.showMinimized)
-        _idx = self.verticalLayout.indexOf(self.setting_pb)
+        # 放在设置入口下方、logo 上方
+        _idx = self.verticalLayout.indexOf(self.icon_l)
         self.verticalLayout.insertWidget(_idx, self.mini_pb)
 
         # 倒计时
@@ -132,7 +134,7 @@ class Main(wn_Main, QMainWindow):
                 RESOURCE_DIR + 'icon.png',
                 on_show_main=self._restore_from_mini,
                 on_show_mini=lambda: self.mini.show_panel(),
-                on_quit=self.close,
+                on_quit=self.quit_app,
                 parent=self,
             )
             self.tray.show()
@@ -203,13 +205,22 @@ class Main(wn_Main, QMainWindow):
             mini.hide_all()
 
     def closeEvent(self, event):
-        mini = getattr(self, 'mini', None)
-        if mini is not None:
-            mini.hide_all()
-        tray = getattr(self, 'tray', None)
-        if tray is not None:
-            tray.hide()
-        super().closeEvent(event)
+        if getattr(self, '_really_quit', False):
+            mini = getattr(self, 'mini', None)
+            if mini is not None:
+                mini.hide_all()
+            tray = getattr(self, 'tray', None)
+            if tray is not None:
+                tray.hide()
+            super().closeEvent(event)
+            return
+        # × = 收进悬浮窗，程序继续待命（真要退出走托盘或设置里的「退出程序」）
+        event.ignore()
+        self.showMinimized()
+
+    def quit_app(self):
+        self._really_quit = True
+        self.close()
 
     def updateClock(self):
         time_str = datetime.now().strftime('%Y年\n%m月%d日\n%H:%M:%S\n' + wordday)
