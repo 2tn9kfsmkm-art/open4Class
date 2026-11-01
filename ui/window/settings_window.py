@@ -16,7 +16,7 @@ import pandas as pd
 
 import bootstrap
 from data.store import shared_store
-from windows.dropableTableView import (
+from ui.component.dropable_table import (
     dragdropQTableView, QComboBoxDelegate, QNoDelegate,
 )
 from tools.PandasQModel import PandasQItemModel
@@ -412,7 +412,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
             QMessageBox.warning(self, '打开失败', f'{e!r}')
 
     def _open_editor(self):
-        from TableEditor import TableEditor
+        from ui.window.table_editor import TableEditor
         from tools.PandasQModel import PandasQItemModel
         store = shared_store()
         try:

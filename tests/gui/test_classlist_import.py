@@ -8,7 +8,7 @@
 import pandas as pd
 import pytest
 
-from UserSettings import CourseEditorWidget
+from ui.window.settings_window import CourseEditorWidget
 
 WEEKDAYS = CourseEditorWidget.WEEKDAYS
 

@@ -12,7 +12,7 @@ from pandas import read_csv
 from PySide6.QtWidgets import QDialog, QTableWidgetItem
 
 import bootstrap
-from SetupWizard import SetupWizard
+from ui.window.setup_wizard import SetupWizard
 
 
 def build_wizard(root):

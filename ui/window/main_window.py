@@ -12,16 +12,16 @@ from PySide6.QtGui import QPixmap, QIcon
 from numpy import where
 
 from windows.wn_Main import Ui_MainWindow as wn_Main
-from windows.dropableTableView import QDateEditDelegate, OndutyContentDelegate
+from ui.component.dropable_table import QDateEditDelegate, OndutyContentDelegate
 
-from Addapp import AddApp, LoadApp
+from ui.window.add_app_dialog import AddApp, LoadApp
 import bootstrap
-from Dialogs import wn_random
-from Message import wn_Message
-from SetupWizard import SetupWizard
-from TableEditor import TableEditor
-from UserSettings import SettingsDialog
-from loading import loadPool, wait_all
+from ui.component.dialogs import wn_random
+from ui.window.message_editor import wn_Message
+from ui.window.setup_wizard import SetupWizard
+from ui.window.table_editor import TableEditor
+from ui.window.settings_window import SettingsDialog
+from services.loading import loadPool, wait_all
 
 from tools.PandasQModel import PandasQItemModel, q_read_csv
 from tools.qss2qt import setQss
@@ -358,31 +358,3 @@ class Main(wn_Main, QMainWindow):
         appthread = LoadApp(self, app_path)
         appthread.start()
         self.showMinimized()
-
-
-if __name__ == '__main__':
-    # Qt6 默认开启高 DPI 缩放（Qt5 默认关闭）。在本机 175% 缩放下，
-    # 界面整体放大 1.75 倍，行高从 57 变成 ~100 物理像素，课表装不下 12 行。
-    # 关掉它即可恢复迁移前（PyQt5）的观感与尺寸。
-    # 想用系统缩放的话，把这两行删掉。
-    os.environ.setdefault('QT_ENABLE_HIGHDPI_SCALING', '0')
-    os.environ.setdefault('QT_SCALE_FACTOR', '1')
-
-    app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(RESOURCE_DIR + 'icon.png'))
-    setQss(QSS_DIR + 'mainpage.qss', app)
-
-    # 首次使用：先确认数据是否就绪，再创建主窗口。
-    # 顺序很重要 —— 不能让向导卡在 Main.__init__ 里面（那样主窗口还没出来
-    # 就先弹窗，用户会以为程序挂了）。
-    if not bootstrap.is_initialized():
-        if bootstrap.infer_legacy_state():
-            # 老用户：已有名单和真实课表，静默补标记，不打扰
-            bootstrap.mark_initialized(note='老用户推断')
-        else:
-            if not SetupWizard.run():
-                sys.exit(0)
-
-    mainwindow = Main()
-    mainwindow.showMaximized()
-    app.exec()

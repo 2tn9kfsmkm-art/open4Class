@@ -7,7 +7,7 @@
 import pytest
 
 import bootstrap
-import UserSettings
+from ui.window import settings_window as UserSettings
 
 
 class FakeMsgBox:

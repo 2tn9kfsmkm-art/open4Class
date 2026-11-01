@@ -8,7 +8,7 @@ import sys
 from tools.PandasQModel import PandasQProxyModel, PandasQItemModel, divideModel, q_read_csv
 from core.shape import *
 from windows.wn_Onduty import Ui_dialog as wn_Onduty
-from windows.dropableTableView import *
+from ui.component.dropable_table import *
 
 
 WN_ONDUTY_TITLE = '调整值日生'

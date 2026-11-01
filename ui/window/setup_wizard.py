@@ -318,7 +318,7 @@ class ClasslistPage(_Page):
             QMessageBox.warning(self, '读取失败', f'{e}')
             return
 
-        from UserSettings import CourseEditorWidget
+        from ui.window.settings_window import CourseEditorWidget
         normalized = CourseEditorWidget._normalize_weekday_columns(src)
         if normalized is None or len(normalized) == 0:
             QMessageBox.warning(

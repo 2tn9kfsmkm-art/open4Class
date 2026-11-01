@@ -70,4 +70,4 @@ class Ui_dialog(object):
         self.more_pb.setText(_translate("dialog", "更多..."))
         self.fill_pb.setText(_translate("dialog", "填充"))
         self.delete_pb.setText(_translate("dialog", "删除"))
-from windows.dropableTableView import dragdropQTableView
+from ui.component.dropable_table import dragdropQTableView

@@ -22,7 +22,7 @@ def sqlite_mode(tmp_dir, monkeypatch):
 
 
 def test_roster_save_goes_to_database(sqlite_mode):
-    from UserSettings import StudentListWidget
+    from ui.window.settings_window import StudentListWidget
 
     widget = StudentListWidget()
     widget.listw.clear()
@@ -33,7 +33,7 @@ def test_roster_save_goes_to_database(sqlite_mode):
 
 
 def test_course_save_goes_to_database(sqlite_mode):
-    from UserSettings import CourseEditorWidget
+    from ui.window.settings_window import CourseEditorWidget
 
     widget = CourseEditorWidget()
     widget.course_list.clear()
@@ -45,7 +45,7 @@ def test_course_save_goes_to_database(sqlite_mode):
 
 
 def test_app_save_goes_to_database(sqlite_mode):
-    from Addapp import AddApp
+    from ui.window.add_app_dialog import AddApp
 
     dialog = AddApp()
     dialog.path_le.setText("C:/Program Files/App/app.exe")
@@ -60,7 +60,7 @@ def test_app_save_goes_to_database(sqlite_mode):
 
 def test_onduty_save_goes_to_database(sqlite_mode):
     from data.store import shared_store as store
-    from UserSettings import OndutySpawnWidget
+    from ui.window.settings_window import OndutySpawnWidget
 
     store().save_names(DataFrame({"name": ["张三", "李四", "王五"]}))
     widget = OndutySpawnWidget()
@@ -69,7 +69,7 @@ def test_onduty_save_goes_to_database(sqlite_mode):
     widget.overwrite_cb.setChecked(True)
 
     # generate 里有 QMessageBox，测试里替换掉
-    import UserSettings
+    from ui.window import settings_window as UserSettings
     saved = {}
     class FakeBox:
         Yes = 1

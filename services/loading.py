@@ -10,8 +10,8 @@ from tools.PandasQModel import PandasQItemModel
 from core.shape import reshapeRow
 from tools.jsonModel import JsonDataModel
 
-from Dialogs import questionForChoice
-from TableEditor import TableEditor
+from ui.component.dialogs import questionForChoice
+from ui.window.table_editor import TableEditor
 from config import *
 
 from data.store import shared_store
