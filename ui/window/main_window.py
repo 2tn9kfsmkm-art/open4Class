@@ -178,7 +178,10 @@ class Main(wn_Main, QMainWindow):
             return []
 
     def _restore_from_mini(self):
-        self.showNormal()
+        if getattr(self, '_was_maximized', False):
+            self.showMaximized()
+        else:
+            self.showNormal()
         self.raise_()
         self.activateWindow()
 
@@ -191,6 +194,7 @@ class Main(wn_Main, QMainWindow):
         if mini is None:
             return
         if self.isMinimized():
+            self._was_maximized = self.isMaximized()
             # 用 singleShot 让窗口状态先落定，再摆悬浮窗
             QTimer.singleShot(0, mini.show_panel)
         elif mini.is_visible():

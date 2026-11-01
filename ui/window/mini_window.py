@@ -10,7 +10,7 @@
 from datetime import datetime
 
 from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QGuiApplication, QMouseEvent
+from PySide6.QtGui import QColor, QGuiApplication, QMouseEvent, QPainter
 from PySide6.QtWidgets import (
     QFrame, QLabel, QPushButton, QVBoxLayout, QWidget,
 )
@@ -28,10 +28,7 @@ _BASE_FLAGS = (
 )
 
 _PANEL_QSS = f"""
-QWidget#mini_panel {{
-    background-color: rgba(155, 13, 20, 0.78);
-    border-radius: 16px;
-}}
+
 QWidget#mini_panel QLabel {{ color: {COLORS['white']}; background: transparent; }}
 QLabel#mini_time {{ font-size: 30pt; font-weight: bold; }}
 QLabel#mini_slot {{ font-size: 13pt; color: #F2DCDD; }}
@@ -50,10 +47,7 @@ QPushButton#mini_back:pressed {{ background-color: rgba(0, 0, 0, 0.25); }}
 """
 
 _CHIP_QSS = f"""
-QWidget#mini_chip {{
-    background-color: rgba(120, 120, 125, 0.72);
-    border-radius: 14px;
-}}
+
 QWidget#mini_chip QLabel {{ color: {COLORS['white']}; background: transparent; }}
 QLabel#chip_slot {{ font-size: 11pt; color: #EDEDED; }}
 QLabel#chip_subject {{ font-size: 15pt; font-weight: bold; }}
@@ -106,7 +100,8 @@ class MiniPanel(QWidget):
 
         self.back_pb = QPushButton('返回主界面')
         self.back_pb.setObjectName('mini_back')
-        self.back_pb.setMinimumHeight(44)   # 触摸目标
+        self.back_pb.setFixedHeight(44)
+        self.back_pb.setCursor(Qt.CursorShape.PointingHandCursor)   # 触摸目标
         self.back_pb.clicked.connect(self.back_requested.emit)
 
         for w in (self.time_l, self.slot_l, self.subject_l,
@@ -114,6 +109,13 @@ class MiniPanel(QWidget):
             layout.addWidget(w)
         layout.addSpacing(6)
         layout.addWidget(self.back_pb)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(155, 13, 20, 200))
+        painter.drawRoundedRect(self.rect(), 16, 16)
 
     # ---- 内容刷新 ----
     def refresh(self, now: datetime, courses, countdowns, lesson_times=None):
@@ -173,6 +175,13 @@ class MiniChip(QWidget):
         self.subject_l.setWordWrap(True)
         layout.addWidget(self.slot_l)
         layout.addWidget(self.subject_l, 1)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(110, 110, 115, 190))
+        painter.drawRoundedRect(self.rect(), 14, 14)
 
     def refresh(self, now: datetime, courses, lesson_times=None):
         state = lesson_state(now, lesson_times)

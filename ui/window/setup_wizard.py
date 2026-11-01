@@ -405,19 +405,32 @@ class SchedulePage(_Page):
                          5: DEFAULT_LESSON_TIMES})
 
     # ---------- 单元格 ----------
+    @staticmethod
+    def _time_options():
+        if not hasattr(SchedulePage, '_opts'):
+            opts = []
+            for h in range(6, 23):
+                for m in (0, 10, 20, 30, 40, 50):
+                    opts.append(f'{h:02d}:{m:02d}')
+            SchedulePage._opts = opts
+        return SchedulePage._opts
+
+    def _make_combo(self, value):
+        cb = QComboBox()
+        cb.addItems(self._time_options())
+        cb.setMinimumHeight(32)
+        if value not in self._time_options():
+            cb.addItem(value)
+        cb.setCurrentText(value)
+        return cb
+
     def _make_cell(self, start, end):
         w = QWidget()
         box = QHBoxLayout(w)
         box.setContentsMargins(2, 0, 2, 0)
         box.setSpacing(2)
-        s = QTimeEdit()
-        e = QTimeEdit()
-        for ed in (s, e):
-            ed.setDisplayFormat('HH:mm')
-            ed.setMinimumHeight(32)
-            box.addWidget(ed)
-        s.setTime(QTime.fromString(start, 'HH:mm'))
-        e.setTime(QTime.fromString(end, 'HH:mm'))
+        box.addWidget(self._make_combo(start))
+        box.addWidget(self._make_combo(end))
         return w
 
     def _fill_from(self, mapping):
@@ -447,11 +460,10 @@ class SchedulePage(_Page):
                 cell = self.table.cellWidget(r, weekday - 1)
                 if cell is None:
                     continue
-                edits = cell.findChildren(QTimeEdit)
-                if len(edits) < 2:
+                combos = cell.findChildren(QComboBox)
+                if len(combos) < 2:
                     continue
-                slots.append((edits[0].time().toString('HH:mm'),
-                              edits[1].time().toString('HH:mm')))
+                slots.append((combos[0].currentText(), combos[1].currentText()))
             if slots:
                 result[weekday] = slots
         return result
@@ -461,13 +473,13 @@ class SchedulePage(_Page):
             src_cell = self.table.cellWidget(r, 0)
             if src_cell is None:
                 continue
-            edits = src_cell.findChildren(QTimeEdit)
-            if len(edits) < 2:
+            combos = src_cell.findChildren(QComboBox)
+            if len(combos) < 2:
                 continue
             for c in range(1, 5):
                 self.table.setCellWidget(
-                    r, c, self._make_cell(edits[0].time().toString('HH:mm'),
-                                          edits[1].time().toString('HH:mm')))
+                    r, c, self._make_cell(combos[0].currentText(),
+                                          combos[1].currentText()))
 
     def _add_row(self):
         self.table.insertRow(self.table.rowCount())
