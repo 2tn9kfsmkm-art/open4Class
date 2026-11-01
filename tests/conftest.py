@@ -34,7 +34,7 @@ os.environ["APPDATA"] = str(_TEST_DATA)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # --- 3. QApplication（必须早于项目模块导入）---
-from PyQt5.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
 
 # 必须持有引用：PyQt 里 QApplication 的所有权在 Python 侧，
 # 不保存的话可能被 GC 掉，之后任何 QWidget 构造都会直接 abort

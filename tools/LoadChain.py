@@ -1,11 +1,11 @@
-from PyQt5.QtCore import pyqtSignal, QObject, QThreadPool, QRunnable
-from PyQt5.QtWidgets import QWidget
+from PySide6.QtCore import Signal, QObject, QThreadPool, QRunnable
+from PySide6.QtWidgets import QWidget
 
 
 class ChainSignals(QObject):
-    step_finished = pyqtSignal(str, int, bool)
-    result = pyqtSignal(object, dict)
-    done = pyqtSignal(object, bool)  # 传 chain 自身，便于主线程执行 play
+    step_finished = Signal(str, int, bool)
+    result = Signal(object, dict)
+    done = Signal(object, bool)  # 传 chain 自身，便于主线程执行 play
 
 
 class Chain(QRunnable):
@@ -61,9 +61,9 @@ class Chain(QRunnable):
 
 
 class ChainPool(QThreadPool):
-    all_done = pyqtSignal()
-    chain_result = pyqtSignal(str, dict)
-    chain_step = pyqtSignal(str, int, bool)
+    all_done = Signal()
+    chain_result = Signal(str, dict)
+    chain_step = Signal(str, int, bool)
 
     def __init__(self, parent=None, max_threads=4):
         super().__init__(parent)

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from pandas import read_csv
-from PyQt5.QtWidgets import QDialog, QTableWidgetItem
+from PySide6.QtWidgets import QDialog, QTableWidgetItem
 
 import bootstrap
 from SetupWizard import SetupWizard

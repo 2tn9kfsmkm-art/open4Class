@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
 
-from PyQt5.QtWidgets import QHeaderView, QMessageBox, QDialog
-from PyQt5.QtCore import Qt, QEventLoop, QUrl
+from PySide6.QtWidgets import QHeaderView, QMessageBox, QDialog
+from PySide6.QtCore import Qt, QEventLoop, QUrl
 from pandas import DataFrame
 
 from tools.LoadChain import Chain, ChainPool
@@ -25,7 +25,7 @@ def wait_all(pool: ChainPool):
     handler = loop.quit
     pool.all_done.connect(handler)
     try:
-        loop.exec_()
+        loop.exec()
     finally:
         try:
             pool.all_done.disconnect(handler)
@@ -167,7 +167,7 @@ class classlist_chain(Chain):
                 model, accept_simple=False, savepath='',
                 title='设置临时课表', show_size=f'{n_rows}x1',
                 row_ops=True, on_save=_save_tmp)
-            if editor.exec_() == QDialog.Accepted:
+            if editor.exec() == QDialog.Accepted:
                 return True
             print('[classlist] 取消了临时课表设置，今日课表留空')
             return False

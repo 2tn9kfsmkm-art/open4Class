@@ -2,8 +2,8 @@
 from pandas.core.indexing import _AtIndexer, _iAtIndexer, _LocIndexer, _iLocIndexer
 from pandas._libs.lib import infer_dtype
 
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtCore import pyqtSignal, QObject, QAbstractItemModel, QSortFilterProxyModel, Qt, QModelIndex
+from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtCore import Signal, QObject, QAbstractItemModel, QSortFilterProxyModel, Qt, QModelIndex
 
 from core.shape import unpack_index, unpack_str_index
 import os
@@ -20,7 +20,7 @@ class PandasError(Exception):...
 
 
 class DataFrameWS(DataFrame, QObject):
-    dataChanged = pyqtSignal(object, object)
+    dataChanged = Signal(object, object)
 
     def __init__(self, *args, parent=None, data=None, **kwargs):
         super().__init__(data, *args, **kwargs)

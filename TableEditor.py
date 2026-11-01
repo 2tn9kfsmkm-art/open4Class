@@ -1,7 +1,7 @@
-from PyQt5.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
+from PySide6.QtWidgets import (QApplication, QDialog, QFileDialog, QMessageBox, QHeaderView,
                              QTableView)
-from PyQt5.QtCore import Qt, QDate, QModelIndex
-from PyQt5.QtGui import QDropEvent
+from PySide6.QtCore import Qt, QDate, QModelIndex
+from PySide6.QtGui import QDropEvent
 from pandas import DataFrame, read_csv, concat
 import sys
 
@@ -295,4 +295,4 @@ if __name__ == '__main__':
         content_filter=QNoDelegate
     )
     te.show()
-    app.exec_()
+    app.exec()

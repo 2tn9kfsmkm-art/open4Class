@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QDropEvent, QDragEnterEvent
+from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QDropEvent, QDragEnterEvent
 from tools.parent import *
 
 def _empty(*args, **kwargs):pass
