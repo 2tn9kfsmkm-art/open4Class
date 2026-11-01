@@ -207,8 +207,9 @@ class OndutyContentDelegate(QtWidgets.QStyledItemDelegate):
         # 两个可编辑下拉框挤在窄单元格里时，Qt6 的箭头会把文字吃掉；
         # 收紧箭头宽度、给输入区留出空间。
         w.setStyleSheet(
-            'QComboBox { padding: 0px 2px; }'
-            'QComboBox::drop-down { width: 18px; border: none; }')
+            'QComboBox { padding: 0px 2px; font-size: 12pt; }'
+            'QComboBox::drop-down { width: 16px; border: none; }'
+            'QComboBox::down-arrow { width: 10px; height: 10px; }')
         lay = QtWidgets.QHBoxLayout(w)
         lay.setContentsMargins(2, 0, 2, 0)
         lay.setSpacing(4)
@@ -255,8 +256,8 @@ class OndutyContentDelegate(QtWidgets.QStyledItemDelegate):
         if rect.height() < 34:
             rect.setHeight(34)
         # 单元格通常放不下「姓名 + 职务」两个下拉，编辑器允许压到邻格上
-        if rect.width() < 260:
-            rect.setWidth(260)
+        if rect.width() < 200:
+            rect.setWidth(200)
         editor.setGeometry(rect)
 
 
