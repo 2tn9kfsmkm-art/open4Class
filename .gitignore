@@ -32,3 +32,6 @@ messages/images/
 # 图片：只放行程序图标与 logo，其余（消息图片）一律忽略
 *.png
 !resources/*.png
+
+# 冒烟脚本输出
+.run-*.txt

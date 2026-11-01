@@ -2,8 +2,8 @@
     border: none; /* 类似于文本框的浅灰色边框 */
     background-color: transparent; /* 白色背景 */
     gridline-color: transparent; /* 隐藏网格线 */
-    selection-background-color: #790910; /* 选中项的背景色 */
-    font-size: 20pt;
+    selection-background-color: @primary-pressed; /* 选中项的背景色 */
+    font-size: @font-h2;
     color: white;
     margin-right:0em;
     margin-top: 6px;
@@ -11,7 +11,7 @@
     /* font-family: "Segoe UI"; */
 }
 #applink_tv::item {
-    background-color: #9b0d14;
+    background-color: @primary;
     border-radius: 6px;
     padding:5px;
     margin: 6px;
@@ -21,5 +21,5 @@
 }
 
 #applink_tv::item:hover {
-    background-color: #9b0d14;
+    background-color: @primary;
 }

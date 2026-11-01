@@ -1172,6 +1172,8 @@ class SettingsDialog(QDialog):
 
         layout = QVBoxLayout(self)
         self.tabs = QTabWidget()
+        # Tab 条放底部：内容区更靠上，点起来也离手更近（HANDOFF §7.6）
+        self.tabs.setTabPosition(QTabWidget.South)
         layout.addWidget(self.tabs, 1)
 
         self.onduty_widget = OndutySpawnWidget(self)

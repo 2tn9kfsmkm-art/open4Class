@@ -1,11 +1,11 @@
 * { 
-  background-color: #9b0d14;
-  color: #ffffff;
+  background-color: @primary;
+  color: @white;
 }
 QPushButton {
-  font-size: 20pt;
+  font-size: @font-h2;
 }
 QLabel {
-  font-size: 24pt;
+  font-size: @font-h1;
   font-weight: bold;
 }

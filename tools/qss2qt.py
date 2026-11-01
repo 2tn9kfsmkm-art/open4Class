@@ -1,8 +1,10 @@
 import os
 
+from ui.tokens import render
+
 
 def setQss(filepath: str, widget, extra: str = ''):
-    """给控件套用 qss 文件；extra 用于在末尾追加局部覆盖（同文件内后写的胜出）。"""
+    """读取 qss 文件 → 替换 @token → 套到控件上；extra 用于局部覆盖。"""
     if not os.path.exists(filepath):
         print(f'[setQss] QSS not found: {filepath}')   # 至少能定位问题
         return
@@ -14,4 +16,4 @@ def setQss(filepath: str, widget, extra: str = ''):
         return
     if extra:
         qss = qss + '\n' + extra
-    widget.setStyleSheet(qss)
+    widget.setStyleSheet(render(qss))

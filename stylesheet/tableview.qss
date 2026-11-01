@@ -2,9 +2,9 @@ QTableView {
     border: 0px; /* 类似于文本框的浅灰色边框 */
     background-color: transparent;
     gridline-color: transparent; /* 隐藏网格线 */
-    selection-background-color: #e8c8ca; /* 选中项的背景色 */
+    selection-background-color: @primary-muted; /* 选中项的背景色 */
     selection-color: black; /* 选中项的文本颜色 */
-    font-size: 28pt;
+    font-size: @font-table;
     /* 可选：设置字体，与你的应用其他部分一致 */
     /* font-family: "Segoe UI"; */
 }

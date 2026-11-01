@@ -1,28 +1,28 @@
 /* ==================== 全局样式 ==================== */
 * {
     font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-    color: #333333;
+    color: @neutral-800;
 }
 
 /* 字号分两级：
    主窗口 —— 要远看（投屏 / 教室大屏），保持原来的大字号
    对话框 —— 要近看（设置、导入、询问），缩小到舒适的操作字号 */
 QMainWindow, QMainWindow * {
-    font-size: 24pt;
+    font-size: @font-h1;
 }
 
 QDialog, QDialog * {
-    font-size: 11pt;
+    font-size: @font-body;
 }
 
 QMainWindow, QWidget {
-    background-color: #ffffff;
+    background-color: @white;
 }
 
 
 /* ==================== 按钮样式 ==================== */
 QPushButton {
-    background-color: #9b0d14;  /* 主色调 - 深红色 */
+    background-color: @primary;  /* 主色调 - 深红色 */
     color: white;
     border: none;
     border-radius: 6px;
@@ -33,61 +33,61 @@ QPushButton {
 
 /* 按钮字号跟随所在窗口的级别 */
 QMainWindow QPushButton {
-    font-size: 20pt;
+    font-size: @font-h2;
 }
 
 QDialog QPushButton {
-    font-size: 11pt;
+    font-size: @font-body;
     padding: 4px 12px;
 }
 
 QPushButton:hover {
-    background-color: #8a0b12;  /* 悬停时稍深的红色 */
+    background-color: @primary-hover;  /* 悬停时稍深的红色 */
 }
 
 QPushButton:pressed {
-    background-color: #790910;  /* 按下时更深的红色 */
+    background-color: @primary-pressed;  /* 按下时更深的红色 */
 }
 
 QPushButton:disabled {
-    background-color: #cccccc;
-    color: #888888;
+    background-color: @neutral-300;
+    color: @neutral-600;
 }
 
 /* ==================== 输入框样式 ==================== */
 QLineEdit, QTextEdit, QPlainTextEdit {
-    border: 1px solid #dddddd;
+    border: 1px solid @neutral-200;
     border-radius: 4px;
     padding: 8px;
     background-color: white;
-    selection-background-color: #e8c8ca;  /* 选中文本背景色 - 淡红色 */
+    selection-background-color: @primary-muted;  /* 选中文本背景色 - 淡红色 */
 }
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
-    border: 2px solid #9b0d14;  /* 聚焦时边框变为主题红色 */
-    background-color: #fefafa;
+    border: 2px solid @primary;  /* 聚焦时边框变为主题红色 */
+    background-color: @primary-tint;
 }
 
 /* ==================== 菜单栏样式 ==================== */
 QMenuBar {
     background-color: white;
-    border-bottom: 2px solid #9b0d14;  /* 底部边框使用主题色 */
+    border-bottom: 2px solid @primary;  /* 底部边框使用主题色 */
 }
 
 QMenuBar::item {
     padding: 8px 16px;
     background-color: transparent;
-    color: #333333;
+    color: @neutral-800;
 }
 
 QMenuBar::item:selected {
-    background-color: #f5e8e9;
-    color: #9b0d14;
+    background-color: @primary-soft;
+    color: @primary;
 }
 
 QMenu {
     background-color: white;
-    border: 1px solid #eeeeee;
+    border: 1px solid @neutral-250;
     border-radius: 4px;
     padding: 4px;
 }
@@ -97,27 +97,27 @@ QMenu::item {
 }
 
 QMenu::item:selected {
-    background-color: #f5e8e9;
-    color: #9b0d14;
+    background-color: @primary-soft;
+    color: @primary;
 }
 
 /* ==================== 滚动条样式 ==================== */
 QScrollBar:vertical {
     border: none;
-    background-color: #f0f0f0;
+    background-color: @neutral-150;
     width: 12px;
     margin: 0px;
     border-radius: 6px;
 }
 
 QScrollBar::handle:vertical {
-    background-color: #c9a1a3;  /* 滚动条手柄颜色 */
+    background-color: @scrollbar;  /* 滚动条手柄颜色 */
     border-radius: 6px;
     min-height: 30px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background-color: #9b0d14;  /* 悬停时变为主题红色 */
+    background-color: @primary;  /* 悬停时变为主题红色 */
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -125,20 +125,20 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 }
 QScrollBar:horizontal {
     border: none;
-    background-color: #f0f0f0;
+    background-color: @neutral-150;
     width: 12px;
     margin: 0px;
     border-radius: 6px;
 }
 
 QScrollBar::handle:horizontal {
-    background-color: #c9a1a3;  /* 滚动条手柄颜色 */
+    background-color: @scrollbar;  /* 滚动条手柄颜色 */
     border-radius: 6px;
     min-height: 30px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background-color: #9b0d14;  /* 悬停时变为主题红色 */
+    background-color: @primary;  /* 悬停时变为主题红色 */
 }
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -147,15 +147,15 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
 
 /* ==================== 标签页样式 ==================== */
 QTabWidget::pane {
-    border: 1px solid #dddddd;
+    border: 1px solid @neutral-200;
     border-radius: 4px;
     background-color: white;
     margin-top: -1px;
 }
 
 QTabBar::tab {
-    background-color: #f9f5f5;
-    color: #666666;
+    background-color: @tab-bg;
+    color: @neutral-650;
     padding: 8px 16px;
     border-top: 2px solid transparent;
     border-radius: 4px 4px 0 0;
@@ -163,54 +163,54 @@ QTabBar::tab {
 
 QTabBar::tab:selected {
     background-color: white;
-    color: #9b0d14;
-    border-top: 2px solid #9b0d14;
+    color: @primary;
+    border-top: 2px solid @primary;
     font-weight: bold;
 }
 
 QTabBar::tab:hover:!selected {
-    background-color: #f5e8e9;
-    color: #8a0b12;
+    background-color: @primary-soft;
+    color: @primary-hover;
 }
 
 /* ==================== 进度条样式 ==================== */
 QProgressBar {
-    border: 1px solid #dddddd;
+    border: 1px solid @neutral-200;
     border-radius: 4px;
     text-align: center;
     background-color: white;
-    color: #333333;
+    color: @neutral-800;
 }
 
 QProgressBar::chunk {
-    background-color: #9b0d14;  /* 进度条填充色 */
+    background-color: @primary;  /* 进度条填充色 */
     border-radius: 3px;
 }
 
 /* ==================== 复选框和单选框样式 ==================== */
 QCheckBox, QRadioButton {
     spacing: 8px;
-    color: #333333;
+    color: @neutral-800;
 }
 
 QCheckBox::indicator:checked, QRadioButton::indicator:checked {
-    background-color: #9b0d14;
-    border: 2px solid #9b0d14;
+    background-color: @primary;
+    border: 2px solid @primary;
 }
 
 QCheckBox::indicator:checked:hover, QRadioButton::indicator:checked:hover {
-    background-color: #8a0b12;
-    border: 2px solid #8a0b12;
+    background-color: @primary-hover;
+    border: 2px solid @primary-hover;
 }
 
 /* ==================== 分组框样式 ==================== */
 QGroupBox {
     font-weight: bold;
-    border: 2px solid #e8c8ca;
+    border: 2px solid @primary-muted;
     border-radius: 6px;
     margin-top: 1.5em;
     padding-top: 10px;
-    background-color: #fefafa;
+    background-color: @primary-tint;
     margin-left: 6px;
     margin-right: 6px;
     margin-bottom: 6px;
@@ -220,19 +220,19 @@ QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top center;
     padding: 0 8px;
-    color: #9b0d14;
+    color: @primary;
 }
 
 /* ==================== 滑块样式 ==================== */
 QSlider::groove:horizontal {
-    border: 1px solid #ddd;
+    border: 1px solid @neutral-200;
     height: 8px;
     background: white;
     border-radius: 4px;
 }
 
 QSlider::handle:horizontal {
-    background: #9b0d14;
+    background: @primary;
     border: 2px solid white;
     width: 18px;
     margin: -6px 0;
@@ -240,6 +240,6 @@ QSlider::handle:horizontal {
 }
 
 QSlider::sub-page:horizontal {
-    background: #e8c8ca;
+    background: @primary-muted;
     border-radius: 4px;
 }
