@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from collections import Counter
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea,
     QLabel, QLineEdit, QPushButton, QSpinBox, QCheckBox, QToolButton,
     QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,
@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QAbstractItemView, QHeaderView, QComboBox, QSizePolicy, QTextEdit,
     QInputDialog,
 )
-from PyQt5.QtCore import Qt, QDate, pyqtSignal, QTimer
+from PySide6.QtCore import Qt, QDate, Signal, QTimer
 from pandas import DataFrame, read_csv
 import pandas as pd
 
@@ -271,7 +271,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
 
     # ---------- 参数 / 数据 ----------
     def _read_params(self):
-        start_date = self.start_date_de.date().toPyDate()
+        start_date = self.start_date_de.date().toPython()
         start_dt = datetime.combine(start_date, datetime.min.time())
         weeks = self.weeks_sb.value()
         daily = self.daily_sb.value()
@@ -427,7 +427,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
                 default_simple=False, show_size='6x5',
                 on_save=store.save_onduty,
             )
-            editor.exec_()
+            editor.exec()
         except Exception as e:
             QMessageBox.warning(self, '打开失败', f'{e!r}')
             return
@@ -904,7 +904,7 @@ class CourseEditorWidget(SettingsWidgetBase):
 # Tab 4/5：外部对话框入口
 # ============================================================
 class ExternalToolTab(QWidget):
-    clicked = pyqtSignal()
+    clicked = Signal()
 
     def __init__(self, title, desc, btn_text, parent=None):
         super().__init__(parent)
@@ -1151,7 +1151,7 @@ class CountdownWidget(SettingsWidgetBase):
 # 设置对话框
 # ============================================================
 class SettingsDialog(QDialog):
-    changed = pyqtSignal(set)
+    changed = Signal(set)
 
     def __init__(self, parent=None):
         super().__init__(parent)

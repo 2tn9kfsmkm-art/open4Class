@@ -4,11 +4,11 @@ import json
 from datetime import datetime
 from functools import partial
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QDialog, QMenu, QLabel,
 )
-from PyQt5.QtCore import QTimer, QModelIndex, Qt
-from PyQt5.QtGui import QPixmap, QIcon
+from PySide6.QtCore import QTimer, QModelIndex, Qt
+from PySide6.QtGui import QPixmap, QIcon
 from numpy import where
 
 from windows.wn_Main import Ui_MainWindow as wn_Main
@@ -182,7 +182,7 @@ class Main(wn_Main, QMainWindow):
         menu = QMenu(self)
         act_del = menu.addAction(f'删除 "{appname}"')
         act_del.triggered.connect(partial(self._delete_app, appname))
-        menu.exec_(self.applink_tv.viewport().mapToGlobal(pos))
+        menu.exec(self.applink_tv.viewport().mapToGlobal(pos))
 
     def _delete_app(self, appname):
         ans = QMessageBox.question(
@@ -205,7 +205,7 @@ class Main(wn_Main, QMainWindow):
     def open_settings(self):
         dlg = SettingsDialog(self)
         dlg.changed.connect(self._on_settings_changed)
-        dlg.exec_()
+        dlg.exec()
 
     def _on_settings_changed(self, keys: set):
         for k in keys:
@@ -272,7 +272,7 @@ class Main(wn_Main, QMainWindow):
                     on_save=_save_today_classlist,
                     default_simple=True, show_size=show_size,
                     row_ops=True)                       # ← 允许加/删行
-            self.wn_classlist.exec_()
+            self.wn_classlist.exec()
             self.data.classlist_chain.play(self)
 
     def openWn_Onduty(self, stu: QModelIndex|None = None):
@@ -319,19 +319,19 @@ class Main(wn_Main, QMainWindow):
                 col_min_width=220,
                 on_save=_save_onduty_from_editor)
 
-        self.wn_Onduty.exec_()
+        self.wn_Onduty.exec()
         self.data.onduty_chain.load()
         self.data.onduty_chain.process()
         self.data.onduty_chain.play(self)
     def openWn_AddApp(self, urls=None):
         self.wn_AddApp = AddApp(self, urls=urls)
-        if self.wn_AddApp.exec_() == QDialog.Accepted:
+        if self.wn_AddApp.exec() == QDialog.Accepted:
             self.data.load(self.data.app_chain)
             wait_all(self.data)
 
     def openWn_Message(self):
         self.wn_Message = wn_Message(self)
-        self.wn_Message.exec_()
+        self.wn_Message.exec()
         self.data.load(self.data.message_chain)
         wait_all(self.data)
 
@@ -375,4 +375,4 @@ if __name__ == '__main__':
 
     mainwindow = Main()
     mainwindow.showMaximized()
-    app.exec_()
+    app.exec()

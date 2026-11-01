@@ -12,7 +12,7 @@ TypeError（2.x 是警告后 upcast），而真实业务里表格列几乎都是
 """
 
 from pandas import DataFrame
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 from tools.PandasQModel import PandasQItemModel, divideModel
 

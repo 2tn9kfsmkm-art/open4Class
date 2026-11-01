@@ -1,9 +1,9 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from tools.PandasQModel import PandasQItemModel
 
 
 class dragdropQTableView(QtWidgets.QTableView):
-    exchange = QtCore.pyqtSignal(object, object)
+    exchange = QtCore.Signal(object, object)
 
     def __init__(self, parent):
         super().__init__(parent=parent)

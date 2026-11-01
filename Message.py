@@ -3,9 +3,9 @@ import re
 import shutil
 from datetime import datetime
 
-from PyQt5.QtWidgets import QDialog, QMessageBox, QFileDialog
-from PyQt5.QtGui import QTextCharFormat, QTextImageFormat, QFont, QImage, QTextCursor
-from PyQt5.QtCore import QUrl
+from PySide6.QtWidgets import QDialog, QMessageBox, QFileDialog
+from PySide6.QtGui import QTextCharFormat, QTextImageFormat, QFont, QImage, QTextCursor
+from PySide6.QtCore import QUrl
 
 from windows.wn_Message import Ui_Dialog as wn_Mes
 from config import *

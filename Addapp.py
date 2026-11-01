@@ -1,8 +1,8 @@
 ﻿import os
 import subprocess
 
-from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox, QFileDialog
-from PyQt5.QtCore import QThread
+from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QFileDialog
+from PySide6.QtCore import QThread
 import pandas as pd
 from pylnk3 import Lnk
 
@@ -136,6 +136,6 @@ class LoadApp(QThread):
 if __name__ == '__main__':
     app = QApplication([])
     win = AddApp()
-    if win.exec_() == QDialog.Accepted:
+    if win.exec() == QDialog.Accepted:
         pass
-    app.exec_()
+    app.exec()

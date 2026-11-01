@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QStandardItemModel
+from PySide6.QtWidgets import *
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QStandardItemModel
 
 from dialogs.LineEditDialog import Ui_LineEditDialog
 from dialogs.inputDialog import Ui_inputDialog
@@ -59,7 +59,7 @@ class LineEditDialog(InputDialog):
 
 def questionForText(parent=None, title=None, text=None, remind=None):
     led = LineEditDialog(parent=parent, title=title, text=text, remind=remind)
-    led.exec_()
+    led.exec()
     return led.get()
 
 
@@ -88,7 +88,7 @@ def questionForChoice(parent=None, title=None, text=None, choices=None):
     else:
         model = PandasQItemModel(data=choices)
     cbd = ComboboxDialog(parent=parent, title=title, text=text, model=model)
-    cbd.exec_()
+    cbd.exec()
     return cbd.get()
 
 

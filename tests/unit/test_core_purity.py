@@ -19,7 +19,7 @@ def test_core_does_not_import_config_or_qt():
     code = (
         "import sys, core.shape, core.weekday, core.onduty;"
         "bad = sorted(m for m in sys.modules"
-        " if m.split('.')[0] in ('config', 'PyQt5', 'tools', 'ondutySpawn'));"
+        " if m.split('.')[0] in ('config', 'PySide6', 'tools', 'ondutySpawn'));"
         "print('|'.join(bad))"
     )
     result = subprocess.run(

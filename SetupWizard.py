@@ -8,8 +8,8 @@
 """
 
 from pandas import DataFrame, read_csv
-from PyQt5.QtCore import QDate, Qt
-from PyQt5.QtWidgets import (
+from PySide6.QtCore import QDate, Qt
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
@@ -523,7 +523,7 @@ class OndutyPage(_Page):
         jobs = self._jobs()
         if not jobs:
             return None, '职务模板不能为空'
-        start = self.start_de.date().toPyDate()
+        start = self.start_de.date().toPython()
         weeks = self.weeks_sb.value()
 
         try:
@@ -659,7 +659,7 @@ class SetupWizard(QDialog):
 
     @staticmethod
     def _available_height() -> int:
-        from PyQt5.QtWidgets import QApplication
+        from PySide6.QtWidgets import QApplication
         screen = QApplication.primaryScreen()
         return screen.availableGeometry().height() if screen else 1080
 
@@ -799,7 +799,7 @@ class SetupWizard(QDialog):
     @classmethod
     def run(cls, parent=None, root=None) -> bool:
         wizard = cls(parent=parent, root=root)
-        return wizard.exec_() == QDialog.Accepted
+        return wizard.exec() == QDialog.Accepted
 
 
 def read_excel_safe(path: str):
