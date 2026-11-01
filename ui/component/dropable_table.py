@@ -312,3 +312,18 @@ class OndutyEditDialog(QtWidgets.QDialog):
     def values(self):
         return (self.name_cb.currentText().strip(),
                 self.job_cb.currentText().strip())
+
+
+class ClickToClearFilter(QtCore.QObject):
+    """点表格空白处时清除选中/焦点。"""
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            view = obj.parent()
+            if view is None or not hasattr(view, 'indexAt'):
+                return False
+            if not view.indexAt(event.pos()).isValid():
+                view.clearSelection()
+                view.setCurrentIndex(QtCore.QModelIndex())
+                view.clearFocus()
+        return False
