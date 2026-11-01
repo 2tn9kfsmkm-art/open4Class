@@ -368,127 +368,139 @@ class ClasslistPage(_Page):
 # ⑤ 值日安排
 # ============================================================
 class SchedulePage(_Page):
-    """作息时间：5 天各自可调，用时间选择器填，不用手打。"""
+    """作息时间：一个小表，用表头的星期下拉切换周一~周五。"""
 
     title = "作息时间"
-    subtitle = ("每节课的起止时间。五天可以不一样；"
-                "点右侧上下箭头或直接输入。")
+    subtitle = ("表头选星期，同一张表里分别选时、分（精确到 1 分钟）。"
+                "五天可以不一样。")
 
     def __init__(self, wizard):
         super().__init__(wizard)
-        lay = self.body
+        self._loading = False
 
-        self.table = QTableWidget(10, 5)
-        self.table.setHorizontalHeaderLabels(['周一', '周二', '周三', '周四', '周五'])
-        self.table.verticalHeader().setDefaultSectionSize(40)
+        from core.schedule import DEFAULT_LESSON_TIMES
+        base = []
+        for start, end in DEFAULT_LESSON_TIMES:
+            sh, sm = (int(x) for x in start.split(':'))
+            eh, em = (int(x) for x in end.split(':'))
+            base.append((sh, sm, eh, em))
+        self._days = {d: list(base) for d in range(1, 6)}
+        self._current = 1
+
+        lay = self.body
+        top = QHBoxLayout()
+        top.addWidget(QLabel('星期'))
+        self.day_cb = QComboBox()
+        self.day_cb.addItems(CLASS_WEEKDAYS)
+        self.day_cb.currentIndexChanged.connect(self._on_day_changed)
+        top.addWidget(self.day_cb)
+        self.copy_btn = QPushButton('把本日复制到其余四天')
+        self.copy_btn.clicked.connect(self._copy_all)
+        top.addWidget(self.copy_btn)
+        top.addStretch(1)
+        lay.addLayout(top)
+
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(
+            ['开始 时', '开始 分', '结束 时', '结束 分'])
+        self.table.verticalHeader().setDefaultSectionSize(38)
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         lay.addWidget(self.table, 1)
 
         row = QHBoxLayout()
-        self.copy_btn = QPushButton('把周一复制到周二~周五')
-        self.copy_btn.clicked.connect(self._copy_monday)
         self.add_btn = QPushButton('加一节')
         self.add_btn.clicked.connect(self._add_row)
         self.del_btn = QPushButton('删末节')
         self.del_btn.clicked.connect(self._del_last)
-        for b in (self.copy_btn, self.add_btn, self.del_btn):
+        for b in (self.add_btn, self.del_btn):
             b.setMinimumHeight(36)
             row.addWidget(b)
         row.addStretch(1)
         lay.addLayout(row)
 
-        from core.schedule import DEFAULT_LESSON_TIMES
-        self._fill_from({1: DEFAULT_LESSON_TIMES, 2: DEFAULT_LESSON_TIMES,
-                         3: DEFAULT_LESSON_TIMES, 4: DEFAULT_LESSON_TIMES,
-                         5: DEFAULT_LESSON_TIMES})
+        self._render()
 
-    # ---------- 单元格 ----------
+    # ---------- 表格 ----------
     @staticmethod
-    def _time_options():
-        if not hasattr(SchedulePage, '_opts'):
-            opts = []
-            for h in range(6, 23):
-                for m in (0, 10, 20, 30, 40, 50):
-                    opts.append(f'{h:02d}:{m:02d}')
-            SchedulePage._opts = opts
-        return SchedulePage._opts
-
-    def _make_combo(self, value):
+    def _combo(values, current):
         cb = QComboBox()
-        cb.addItems(self._time_options())
+        cb.addItems([f'{v:02d}' for v in values])
+        cb.setCurrentText(f'{current:02d}')
         cb.setMinimumHeight(32)
-        if value not in self._time_options():
-            cb.addItem(value)
-        cb.setCurrentText(value)
         return cb
 
-    def _make_cell(self, start, end):
-        w = QWidget()
-        box = QHBoxLayout(w)
-        box.setContentsMargins(2, 0, 2, 0)
-        box.setSpacing(2)
-        box.addWidget(self._make_combo(start))
-        box.addWidget(self._make_combo(end))
-        return w
+    def _render(self):
+        rows = self._days[self._current]
+        self._loading = True
+        self.table.setRowCount(len(rows))
+        for r, (sh, sm, eh, em) in enumerate(rows):
+            self.table.setCellWidget(r, 0, self._combo(range(0, 24), sh))
+            self.table.setCellWidget(r, 1, self._combo(range(0, 60), sm))
+            self.table.setCellWidget(r, 2, self._combo(range(0, 24), eh))
+            self.table.setCellWidget(r, 3, self._combo(range(0, 60), em))
+        self.table.setMinimumHeight(38 * len(rows) + 44)
+        self._loading = False
 
-    def _fill_from(self, mapping):
-        rows = max((len(v) for v in mapping.values()), default=10)
-        self.table.setRowCount(rows)
-        for weekday in range(1, 6):
-            slots = mapping.get(weekday) or mapping.get(str(weekday)) or []
-            for r in range(rows):
-                start, end = (slots[r] if r < len(slots) else ('07:40', '08:20'))
-                self.table.setCellWidget(r, weekday - 1, self._make_cell(start, end))
-        self._resize_rows()
+    def _save_current(self):
+        if self._loading:
+            return
+        rows = []
+        for r in range(self.table.rowCount()):
+            cbs = [self.table.cellWidget(r, c) for c in range(4)]
+            if any(cb is None for cb in cbs):
+                continue
+            rows.append(tuple(int(cb.currentText()) for cb in cbs))
+        self._days[self._current] = rows
 
-    def _resize_rows(self):
-        self.table.setMinimumHeight(self.table.verticalHeader().defaultSectionSize()
-                                    * self.table.rowCount() + 40)
+    def _on_day_changed(self, index):
+        self._save_current()
+        self._current = index + 1
+        self._render()
+
+    def _copy_all(self):
+        self._save_current()
+        rows = list(self._days[self._current])
+        for d in range(1, 6):
+            if d != self._current:
+                self._days[d] = list(rows)
+
+    def _add_row(self):
+        self._save_current()
+        self._days[self._current].append((7, 40, 8, 20))
+        self._render()
+
+    def _del_last(self):
+        self._save_current()
+        if len(self._days[self._current]) > 1:
+            self._days[self._current].pop()
+            self._render()
 
     # ---------- 对外 ----------
     def set_times(self, mapping: dict):
-        if mapping:
-            self._fill_from(mapping)
+        if not mapping:
+            return
+        for weekday in range(1, 6):
+            slots = mapping.get(weekday) or mapping.get(str(weekday))
+            if not slots:
+                continue
+            rows = []
+            for start, end in slots:
+                sh, sm = (int(x) for x in str(start).split(':'))
+                eh, em = (int(x) for x in str(end).split(':'))
+                rows.append((sh, sm, eh, em))
+            self._days[weekday] = rows
+        self._render()
 
     def collect(self) -> dict:
+        self._save_current()
         result = {}
-        for weekday in range(1, 6):
-            slots = []
-            for r in range(self.table.rowCount()):
-                cell = self.table.cellWidget(r, weekday - 1)
-                if cell is None:
-                    continue
-                combos = cell.findChildren(QComboBox)
-                if len(combos) < 2:
-                    continue
-                slots.append((combos[0].currentText(), combos[1].currentText()))
-            if slots:
-                result[weekday] = slots
+        for weekday, rows in self._days.items():
+            if rows:
+                result[weekday] = [(f'{sh:02d}:{sm:02d}', f'{eh:02d}:{em:02d}')
+                                   for sh, sm, eh, em in rows]
         return result
-
-    def _copy_monday(self):
-        for r in range(self.table.rowCount()):
-            src_cell = self.table.cellWidget(r, 0)
-            if src_cell is None:
-                continue
-            combos = src_cell.findChildren(QComboBox)
-            if len(combos) < 2:
-                continue
-            for c in range(1, 5):
-                self.table.setCellWidget(
-                    r, c, self._make_cell(combos[0].currentText(),
-                                          combos[1].currentText()))
-
-    def _add_row(self):
-        self.table.insertRow(self.table.rowCount())
-        self._resize_rows()
-
-    def _del_last(self):
-        if self.table.rowCount() > 1:
-            self.table.removeRow(self.table.rowCount() - 1)
-            self._resize_rows()
 
 
 class OndutyPage(_Page):
