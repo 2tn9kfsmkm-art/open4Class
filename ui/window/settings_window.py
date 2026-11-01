@@ -3,6 +3,7 @@ from datetime import datetime
 from collections import Counter
 
 from PySide6.QtWidgets import (
+    QCheckBox, QDialogButtonBox,
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QScrollArea,
     QLabel, QLineEdit, QPushButton, QSpinBox, QCheckBox, QToolButton,
     QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,

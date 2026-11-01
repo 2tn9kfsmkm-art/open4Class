@@ -59,6 +59,8 @@ def render(qss: str) -> str:
 
     未知的 @xxx 原样保留，方便发现拼错的名字。
     """
-    for name, value in {**COLORS, **FONTS}.items():
-        qss = qss.replace('@' + name, value)
+    merged = {**COLORS, **FONTS}
+    # 长的先替换：否则 @primary 会把 @primary-muted 变成 "#9B0D14-muted"
+    for name in sorted(merged, key=len, reverse=True):
+        qss = qss.replace('@' + name, merged[name])
     return qss
