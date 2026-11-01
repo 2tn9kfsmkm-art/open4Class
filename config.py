@@ -142,52 +142,21 @@ wordday = weekday2word(weekday)
 
 classday = 0
 class_wordday = wordday
-
 import json
 
 SETTINGS_JSON_PATH = FILE_DIR + 'settings.json'
 
-DEFAULT_USER_SETTINGS = {
-    'class_short_name': '高三八班',
-    'class_full_name': '高三（8）班',
-    'school_name': '市西中学',
-    'onduty_jobs': ['扫', '擦', '排', '理'],
-    'onduty_daily_template': ['扫', '扫', '擦', '排', '理'],
-}
-
-
-def load_user_settings() -> dict:
-    """读取 settings.json；不存在时自动生成默认值。字段缺失用默认值补齐。"""
-    if not os.path.exists(SETTINGS_JSON_PATH):
-        with open(SETTINGS_JSON_PATH, 'w', encoding=ENCODING) as f:
-            json.dump(DEFAULT_USER_SETTINGS, f, ensure_ascii=False, indent=2)
-        return dict(DEFAULT_USER_SETTINGS)
-    try:
-        with open(SETTINGS_JSON_PATH, 'r', encoding=ENCODING) as f:
-            data = json.load(f)
-    except Exception:
-        return dict(DEFAULT_USER_SETTINGS)
-    merged = dict(DEFAULT_USER_SETTINGS)
-    if isinstance(data, dict):
-        merged.update(data)
-    return merged
-
-
-def save_user_settings(data: dict) -> None:
-    with open(SETTINGS_JSON_PATH, 'w', encoding=ENCODING) as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-def get_onduty_jobs() -> list:
-    return load_user_settings()['onduty_jobs']
-
-
-def get_onduty_daily_template() -> list:
-    return load_user_settings()['onduty_daily_template']
-
 DEFAULT_COUNTDOWNS = [
     {'label': '高考', 'date': '2027-06-07'},
     {'label': '春考', 'date': '2027-01-02'},
+]
+
+# 作息时间表：悬浮窗靠它判断"第几节 / 课间"。可在 settings.json 里改。
+DEFAULT_LESSON_TIMES = [
+    ["07:40", "08:20"], ["08:30", "09:10"], ["09:20", "10:00"],
+    ["10:10", "10:50"], ["11:00", "11:40"], ["13:00", "13:40"],
+    ["13:50", "14:30"], ["14:40", "15:20"], ["15:30", "16:10"],
+    ["16:20", "17:00"],
 ]
 
 DEFAULT_USER_SETTINGS = {
@@ -196,6 +165,7 @@ DEFAULT_USER_SETTINGS = {
     'school_name': '市西中学',
     'onduty_jobs': ['扫', '擦', '排', '理'],
     'onduty_daily_template': ['扫', '扫', '擦', '排', '理'],
+    'lesson_times': DEFAULT_LESSON_TIMES,
     'countdowns': DEFAULT_COUNTDOWNS,
 }
 
@@ -214,3 +184,16 @@ def load_user_settings() -> dict:
     if isinstance(data, dict):
         merged.update(data)
     return merged
+
+
+def save_user_settings(data: dict) -> None:
+    with open(SETTINGS_JSON_PATH, 'w', encoding=ENCODING) as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def get_onduty_jobs() -> list:
+    return load_user_settings()['onduty_jobs']
+
+
+def get_onduty_daily_template() -> list:
+    return load_user_settings()['onduty_daily_template']

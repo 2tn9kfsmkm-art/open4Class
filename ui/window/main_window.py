@@ -6,8 +6,9 @@ from functools import partial
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QDialog, QMenu, QLabel,
+    QPushButton,
 )
-from PySide6.QtCore import QTimer, QModelIndex, Qt
+from PySide6.QtCore import QEvent, QModelIndex, QTimer, Qt
 from PySide6.QtGui import QPixmap, QIcon
 from numpy import where
 
@@ -22,6 +23,8 @@ from ui.component.dialogs import wn_random
 from ui.window.message_editor import wn_Message
 from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
+from ui.component.tray import TrayIcon
+from ui.window.mini_window import MiniController
 from ui.window.settings_window import SettingsDialog
 from services.loading import loadPool, wait_all
 
@@ -86,6 +89,14 @@ class Main(wn_Main, QMainWindow):
         logo = QPixmap(RESOURCE_DIR + 'logo.png')
         self.icon_l.setPixmap(logo)
 
+        # 侧栏最小化按钮：倒计时下方、设置入口上方
+        self.mini_pb = QPushButton('最小化')
+        self.mini_pb.setMinimumHeight(44)          # 触摸目标
+        self.mini_pb.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.mini_pb.clicked.connect(self.showMinimized)
+        _idx = self.verticalLayout.indexOf(self.setting_pb)
+        self.verticalLayout.insertWidget(_idx, self.mini_pb)
+
         # 倒计时
         self._countdown_labels = []
         self._render_countdowns()
@@ -114,10 +125,69 @@ class Main(wn_Main, QMainWindow):
         # 数据加载
         self.data = loadPool(parent=self, widget=self)
 
+        # 系统托盘（希沃上可能不可用，可用才建）
+        self.tray = None
+        if TrayIcon.available():
+            self.tray = TrayIcon(
+                RESOURCE_DIR + 'icon.png',
+                on_show_main=self._restore_from_mini,
+                on_show_mini=lambda: self.mini.show_panel(),
+                on_quit=self.close,
+                parent=self,
+            )
+            self.tray.show()
+
+        # 三层窗口：主窗口 --最小化--> 悬浮窗 --20 秒--> 右下角小方块
+        self.mini = MiniController(
+            courses_provider=self._today_courses,
+            countdowns_provider=lambda: load_user_settings().get('countdowns'),
+            lesson_times_provider=lambda: load_user_settings().get('lesson_times'),
+            on_back=self._restore_from_mini,
+        )
+
+    # ---------- 悬浮窗数据 ----------
+    def _today_courses(self) -> list:
+        try:
+            df = self.data['model_classlist_today']._df
+            return [str(v) for v in df.iloc[:, 0].tolist()]
+        except Exception:                       # noqa: BLE001
+            return []
+
+    def _restore_from_mini(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    # ---------- 最小化 / 恢复 ----------
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() != QEvent.Type.WindowStateChange:
+            return
+        mini = getattr(self, 'mini', None)
+        if mini is None:
+            return
+        if self.isMinimized():
+            # 用 singleShot 让窗口状态先落定，再摆悬浮窗
+            QTimer.singleShot(0, mini.show_panel)
+        elif mini.is_visible():
+            mini.hide_all()
+
+    def closeEvent(self, event):
+        mini = getattr(self, 'mini', None)
+        if mini is not None:
+            mini.hide_all()
+        tray = getattr(self, 'tray', None)
+        if tray is not None:
+            tray.hide()
+        super().closeEvent(event)
+
     def updateClock(self):
         time_str = datetime.now().strftime('%Y年\n%m月%d日\n%H:%M:%S\n' + wordday)
         self.time_l.setText(time_str)
         self._update_countdowns()
+        mini = getattr(self, 'mini', None)
+        if mini is not None and mini.is_visible():
+            mini.refresh()
 
     def _render_countdowns(self):
         """按 settings.json 的 countdowns 重建左侧栏倒计时标签。"""
@@ -151,7 +221,7 @@ class Main(wn_Main, QMainWindow):
         # 重置拉伸：时间 / 倒计时等比，底部设置区（按钮 + logo）固定高度
         for i in range(layout.count()):
             w = layout.itemAt(i).widget()
-            fixed = w is self.setting_pb or w is self.icon_l
+            fixed = w in (self.setting_pb, self.icon_l, self.mini_pb)
             layout.setStretch(i, 0 if fixed else 1)
 
         self._update_countdowns()
