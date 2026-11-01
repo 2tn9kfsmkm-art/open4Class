@@ -47,7 +47,7 @@ class TestPanel:
             Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
     def test_fixed_width(self, controller):
-        assert controller.panel.width() == 220
+        assert controller.panel.width() == 260
 
 
 class TestChip:

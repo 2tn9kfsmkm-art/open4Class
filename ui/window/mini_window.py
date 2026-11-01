@@ -33,9 +33,9 @@ QWidget#mini_panel {{
     border-radius: 16px;
 }}
 QWidget#mini_panel QLabel {{ color: {COLORS['white']}; background: transparent; }}
-QLabel#mini_time {{ font-size: 34pt; font-weight: bold; }}
+QLabel#mini_time {{ font-size: 30pt; font-weight: bold; }}
 QLabel#mini_slot {{ font-size: 13pt; color: #F2DCDD; }}
-QLabel#mini_subject {{ font-size: 20pt; font-weight: bold; }}
+QLabel#mini_subject {{ font-size: 20pt; font-weight: bold; padding-top: 4px; }}
 QLabel#mini_next {{ font-size: 11pt; color: #F2DCDD; }}
 QLabel#mini_countdown {{ font-size: 11pt; color: #F2DCDD; }}
 QPushButton#mini_back {{
@@ -81,15 +81,18 @@ class MiniPanel(QWidget):
         self.setWindowFlags(_BASE_FLAGS)
         # 出现时不抢焦点：老师正在打字也不会被打断
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
-        self.setFixedWidth(220)
+        # 半透明背景必须开这个属性，否则 QSS 的 rgba 会被画成实色
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setFixedWidth(260)
         self.setObjectName('mini_panel')
         self.setStyleSheet(_PANEL_QSS)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(2)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(4)
 
         self.time_l = QLabel('--:--')
+        self.time_l.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.time_l.setObjectName('mini_time')
         self.slot_l = QLabel('')
         self.slot_l.setObjectName('mini_slot')
@@ -152,6 +155,8 @@ class MiniChip(QWidget):
         super().__init__(parent)
         self.setWindowFlags(_BASE_FLAGS)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        # 半透明背景必须开这个属性，否则 QSS 的 rgba 会被画成实色
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedSize(112, 112)
         self.setObjectName('mini_chip')
         self.setStyleSheet(_CHIP_QSS)

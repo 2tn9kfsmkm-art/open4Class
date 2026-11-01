@@ -183,6 +183,8 @@ def save_all(info: dict, names, classlist, onduty=None,
 
         if onduty is not None and len(onduty) > 0:
             store.save_onduty(DataFrame(onduty))
+        if lesson_times:
+            store.save_lesson_times(lesson_times)
     finally:
         if owned:
             store.close()
