@@ -29,8 +29,8 @@
 | P4 | core/ 抽取 | `onduty`/`weekday`/`shape` 纯函数化，覆盖率 ≥80% | 1–1.5 天 | ✅ `v0.8-core` |
 | P5 | Nuitka 通道 | 构建脚本、`.ico`、干净目录验证、产出可分发包 | 1 天 | 待做（onefile/standalone 待定） |
 | P6 | SQLite 数据层 | `Repository` + `SqliteRepository` + 迁移框架 + CSV→DB 脚本 + 业务接入 + 设置里可切换 | 2 天 | ✅ `v0.11-sqlite-wired` / `v0.12-storage-switch` |
-| P7 | 悬浮窗 + 托盘 | 最小化出侧边窗、托盘三菜单 | 1.5 天 | 待做 |
-| P8 | 向导二期 | 值日分组文件导入、导入格式规范文档、模板下载、从设置里重跑向导 | 1 天 | 待做 |
+| P7 | 悬浮窗 + 托盘 | 三层形态（主窗口 → 悬浮窗 → 右下角小方块）、侧栏最小化按钮、× 收进悬浮窗、托盘三菜单 | 1.5 天 | ✅ `v0.20-mini-window` / `v0.24-close-to-mini` |
+| P8 | 向导二期 | 作息时间收集（按星期、时分下拉）、分组导入支持 xlsx、导入模板下载、格式文档、重跑向导按「保留项」勾选 | 1.5 天 | ✅ `v0.21-imports` / `v0.23.7-lesson-save` |
 | P9 | UI 细化 / PySide6 | 颜色 token、设置 Tab 移底部、目录重构、换 Qt 绑定、冗余清理 | ? | ✅ `v0.16-pyside6` / `v0.17-layout` / `v0.18-ui-tokens` |
 | P10 | 文档 | `docs/USER_MANUAL.md` + HANDOFF 升 v1.1 | 0.5 天 | 待做 |
 
