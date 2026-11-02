@@ -72,14 +72,16 @@ class TopBar(QWidget):
 
         self.time_l = QLabel('--:--')
         self.time_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 30pt; font-weight: bold;')
+            f'color: {COLORS["white"]}; font-size: 30pt; font-weight: bold;'
+            'background: transparent; border: none;')
         self.course_l = QLabel('')
         self.course_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 20pt; font-weight: bold;')
+            f'color: {COLORS["white"]}; font-size: 20pt; font-weight: bold;'
+            'background: transparent; border: none;')
         self.next_l = QLabel('')
-        self.next_l.setStyleSheet('color: #F2DCDD; font-size: 13pt;')
+        self.next_l.setStyleSheet('color: #F2DCDD; font-size: 13pt; background: transparent; border: none;')
         self.info_l = QLabel('')
-        self.info_l.setStyleSheet('color: #F2DCDD; font-size: 13pt;')
+        self.info_l.setStyleSheet('color: #F2DCDD; font-size: 13pt; background: transparent; border: none;')
 
         self.time_l.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.time_l)
@@ -88,6 +90,8 @@ class TopBar(QWidget):
         layout.addSpacing(12)
         layout.addWidget(self.next_l)
         layout.addStretch(1)
+        for _lbl in (self.time_l, self.course_l, self.next_l, self.info_l):
+            _lbl.setAutoFillBackground(False)
         layout.addWidget(self.info_l)
 
     def paintEvent(self, event):
@@ -144,7 +148,8 @@ class EntryChip(QWidget):
         self.label = QLabel('班级')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 16pt; font-weight: bold;')
+            f'color: {COLORS["white"]}; font-size: 16pt; font-weight: bold;'
+            'background: transparent; border: none;')
         layout.addWidget(self.label)
 
     def paintEvent(self, event):
