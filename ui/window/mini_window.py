@@ -245,9 +245,9 @@ class MiniController:
     # ---- 显示 ----
     def show_panel(self):
         self.chip.hide()
-        self.refresh()
         self.panel.place()
-        self.panel.show()
+        self.panel.show()          # 先显示，refresh 里的 isVisible() 才为真
+        self.refresh()
         # 数据是异步加载的：稍后再刷一次，避免刚最小化时短暂空白
         from PySide6.QtCore import QTimer
         QTimer.singleShot(300, self.refresh)
@@ -264,9 +264,20 @@ class MiniController:
     # ---- 刷新 ----
     def refresh(self):
         now = datetime.now()
-        courses = self._courses()
-        countdowns = self._countdowns()
-        times = self._lesson_times()
+        if self.panel.isVisible():
+            self.panel.time_l.setText(now.strftime('%H:%M'))   # 时间先走，最要紧
+        try:
+            courses = self._courses()
+        except Exception:                       # noqa: BLE001
+            courses = []
+        try:
+            countdowns = self._countdowns()
+        except Exception:                       # noqa: BLE001
+            countdowns = []
+        try:
+            times = self._lesson_times()
+        except Exception:                       # noqa: BLE001
+            times = None
         if self.panel.isVisible():
             self.panel.refresh(now, courses, countdowns, times)
         if self.chip.isVisible():
