@@ -25,8 +25,8 @@ _FLAGS = (
     | Qt.WindowType.WindowStaysOnTopHint
 )
 
-_BAR_HEIGHT = 72
-_CHIP_SIZE = 72
+_BAR_HEIGHT = 96
+_CHIP_SIZE = 112
 
 
 def _course_at(courses, index) -> str:
@@ -72,16 +72,16 @@ class TopBar(QWidget):
 
         self.time_l = QLabel('--:--')
         self.time_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 30pt; font-weight: bold;'
+            f'color: {COLORS["white"]}; font-size: 26pt; font-weight: bold;'
             'background: transparent; border: none;')
         self.course_l = QLabel('')
         self.course_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 20pt; font-weight: bold;'
+            f'color: {COLORS["white"]}; font-size: 18pt; font-weight: bold;'
             'background: transparent; border: none;')
         self.next_l = QLabel('')
-        self.next_l.setStyleSheet('color: #F2DCDD; font-size: 13pt; background: transparent; border: none;')
+        self.next_l.setStyleSheet('color: #F2DCDD; font-size: 12pt; background: transparent; border: none;')
         self.info_l = QLabel('')
-        self.info_l.setStyleSheet('color: #F2DCDD; font-size: 13pt; background: transparent; border: none;')
+        self.info_l.setStyleSheet('color: #F2DCDD; font-size: 12pt; background: transparent; border: none;')
 
         self.time_l.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.time_l)
@@ -125,9 +125,9 @@ class TopBar(QWidget):
         geo = _primary_geometry()
         if geo is None:
             return
-        width = min(900, int(geo.width() * 0.55))
+        width = min(1180, int(geo.width() * 0.72))
         self.setFixedWidth(width)
-        self.move(geo.left() + (geo.width() - width) // 2, geo.top() + 10)
+        self.move(geo.left() + (geo.width() - width) // 2, geo.top() + 12)
 
 
 class EntryChip(QWidget):
@@ -148,7 +148,7 @@ class EntryChip(QWidget):
         self.label = QLabel('班级')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 16pt; font-weight: bold;'
+            f'color: {COLORS["white"]}; font-size: 20pt; font-weight: bold;'
             'background: transparent; border: none;')
         layout.addWidget(self.label)
 
