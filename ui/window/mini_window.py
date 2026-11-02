@@ -12,7 +12,9 @@ from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QGuiApplication, QMouseEvent, QPainter
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
+)
 
 from core.schedule import describe, lesson_state
 from ui.tokens import COLORS
@@ -24,7 +26,7 @@ _FLAGS = (
 )
 
 _BAR_HEIGHT = 72
-_CHIP_SIZE = 84
+_CHIP_SIZE = 72
 
 
 def _course_at(courses, index) -> str:
@@ -79,6 +81,7 @@ class TopBar(QWidget):
         self.info_l = QLabel('')
         self.info_l.setStyleSheet('color: #F2DCDD; font-size: 13pt;')
 
+        self.time_l.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.time_l)
         layout.addSpacing(28)
         layout.addWidget(self.course_l)
@@ -91,8 +94,8 @@ class TopBar(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(155, 13, 20, 215))
-        painter.drawRoundedRect(self.rect(), 12, 12)
+        painter.setBrush(QColor(155, 13, 20, 175))
+        painter.drawRoundedRect(self.rect(), 16, 16)
 
     def refresh(self, now, courses, countdowns, lesson_times=None):
         self.time_l.setText(now.strftime('%H:%M'))
@@ -118,8 +121,9 @@ class TopBar(QWidget):
         geo = _primary_geometry()
         if geo is None:
             return
-        self.setFixedWidth(geo.width())
-        self.move(geo.left(), geo.top())
+        width = min(900, int(geo.width() * 0.55))
+        self.setFixedWidth(width)
+        self.move(geo.left() + (geo.width() - width) // 2, geo.top() + 10)
 
 
 class EntryChip(QWidget):
@@ -147,7 +151,7 @@ class EntryChip(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(155, 13, 20, 220))
+        painter.setBrush(QColor(155, 13, 20, 190))
         painter.drawRoundedRect(self.rect(), 16, 16)
 
     def mousePressEvent(self, event: QMouseEvent):
