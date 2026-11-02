@@ -50,7 +50,7 @@ class TestTopBar:
         assert '距离春考' in controller.bar.info_l.text()
 
     def test_bar_is_a_strip(self, controller):
-        assert controller.bar.height() == 72
+        assert controller.bar.height() == 96
 
     def test_never_steals_focus(self, controller):
         assert controller.bar.testAttribute(
@@ -59,8 +59,8 @@ class TestTopBar:
 
 class TestEntryChip:
     def test_small_square(self, controller):
-        assert controller.chip.width() == 72
-        assert controller.chip.height() == 72
+        assert controller.chip.width() == 112
+        assert controller.chip.height() == 112
 
     def test_click_goes_back(self, controller):
         controller.show_all()
