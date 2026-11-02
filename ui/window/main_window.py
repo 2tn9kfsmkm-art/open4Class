@@ -133,7 +133,7 @@ class Main(wn_Main, QMainWindow):
             self.tray = TrayIcon(
                 RESOURCE_DIR + 'icon.png',
                 on_show_main=self._restore_from_mini,
-                on_show_mini=lambda: self.mini.show_panel(),
+                on_show_mini=lambda: self.mini.show_all(),
                 on_quit=self.quit_app,
                 parent=self,
             )
@@ -200,7 +200,7 @@ class Main(wn_Main, QMainWindow):
             if self.isMinimized():
                 self._was_maximized = self.isMaximized()
                 # 用 singleShot 让窗口状态先落定，再摆悬浮窗
-                QTimer.singleShot(0, mini.show_panel)
+                QTimer.singleShot(0, mini.show_all)
             elif mini.is_visible() and self.isActiveWindow():
                 mini.hide_all()
             return
@@ -214,7 +214,7 @@ class Main(wn_Main, QMainWindow):
             if app_active:
                 return
             if not self.isActiveWindow() and not self.isMinimized() and self.isVisible():
-                QTimer.singleShot(150, mini.show_panel)
+                QTimer.singleShot(150, mini.show_all)
             elif self.isActiveWindow() and mini.is_visible():
                 mini.hide_all()
 

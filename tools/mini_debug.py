@@ -41,19 +41,19 @@ def main():
 
     window.mini.refresh = counted
     try:
-        window.mini._tick.timeout.disconnect()
+        window.mini._timer.timeout.disconnect()
     except Exception:
         pass
-    window.mini._tick.timeout.connect(counted)
+    window.mini._timer.timeout.connect(counted)
 
     def report():
         mini = window.mini
         print(
             f"[{datetime.now():%H:%M:%S}] "
             f"tick={mini._tick.isActive()} "
-            f"panel={mini.panel.isVisible()} "
+            f"bar={mini.bar.isVisible()} "
             f"chip={mini.chip.isVisible()} "
-            f"label={mini.panel.time_l.text()} "
+            f"label={mini.bar.time_l.text()} "
             f"刷新次数={ticks['n']}",
             flush=True,
         )
