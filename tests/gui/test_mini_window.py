@@ -59,8 +59,8 @@ class TestTopBar:
 
 class TestEntryChip:
     def test_small_square(self, controller):
-        assert controller.chip.width() == 84
-        assert controller.chip.height() == 84
+        assert controller.chip.width() == 72
+        assert controller.chip.height() == 72
 
     def test_click_goes_back(self, controller):
         controller.show_all()
