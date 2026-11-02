@@ -103,6 +103,12 @@ class MiniPanel(QWidget):
         self.back_pb = QPushButton('返回主界面')
         self.back_pb.setObjectName('mini_back')
         self.back_pb.setFixedHeight(52)
+
+        # 面板自己拿一个心跳：这样无论谁把它 show 出来，刷新都会继续
+        from PySide6.QtCore import QTimer
+        self._own_timer = QTimer(self)
+        self._own_timer.setInterval(1000)
+        self._own_timer.timeout.connect(self._on_tick)
         self.back_pb.setCursor(Qt.CursorShape.PointingHandCursor)   # 触摸目标
         self.back_pb.pressed.connect(self.back_requested.emit)
 
@@ -118,6 +124,19 @@ class MiniPanel(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(155, 13, 20, 200))
         painter.drawRoundedRect(self.rect(), 16, 16)
+
+    def _on_tick(self):
+        handler = getattr(self, 'on_tick', None)
+        if callable(handler):
+            handler()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._own_timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._own_timer.stop()
 
     def mousePressEvent(self, event):
         # 兜底：面板没有焦点，某些环境下按钮收不到点击
@@ -145,6 +164,7 @@ class MiniPanel(QWidget):
             self.next_l.setText('')
 
         self.countdown_l.setText(_nearest_countdown(now, countdowns))
+        self.update()
         self.layout().activate()
         self.setFixedHeight(self.sizeHint().height())
 
@@ -243,6 +263,9 @@ class MiniController:
         self._collapse = _make_timer(COLLAPSE_MS, self._collapse_to_chip)
         # 自带一个 1 秒心跳：不依赖主窗口的时钟（最小化/失焦时更可靠）
         self._tick = _make_timer(1000, self.refresh, single_shot=False)
+        self._tick.setParent(self.panel)   # 跟着面板活，避免被回收
+        self.panel.on_tick = self.refresh   # 面板自带心跳也调这里
+        self._tick.start()
 
     # ---- 显示 ----
     def show_panel(self):
@@ -250,7 +273,6 @@ class MiniController:
         self.panel.place()
         self.panel.show()          # 先显示，refresh 里的 isVisible() 才为真
         self.refresh()
-        self._tick.start()
         # 数据是异步加载的：稍后再刷一次，避免刚最小化时短暂空白
         from PySide6.QtCore import QTimer
         QTimer.singleShot(300, self.refresh)
@@ -258,7 +280,6 @@ class MiniController:
 
     def hide_all(self):
         self._collapse.stop()
-        self._tick.stop()
         self.panel.hide()
         self.chip.hide()
 
@@ -296,7 +317,6 @@ class MiniController:
         self.chip.refresh(datetime.now(), self._courses(), self._lesson_times())
         self.chip.place()
         self.chip.show()
-        self._tick.start()
 
     def _show_panel(self):
         self.chip.hide()
