@@ -141,7 +141,10 @@ class EntryChip(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedSize(_CHIP_SIZE, _CHIP_SIZE)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.SizeAllCursor)
+        self._drag_offset = None
+        self._dragged = False
+        self._user_moved = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -161,10 +164,32 @@ class EntryChip(QWidget):
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
+            self._drag_offset = (event.globalPosition().toPoint()
+                                 - self.frameGeometry().topLeft())
+            self._dragged = False
         super().mousePressEvent(event)
 
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self._drag_offset is not None and (
+                event.buttons() & Qt.MouseButton.LeftButton):
+            target = event.globalPosition().toPoint() - self._drag_offset
+            if (target - self.pos()).manhattanLength() > 3:
+                self._dragged = True
+                self._user_moved = True
+            self.move(target)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        # 拖过就不算点击，避免移动完又跳回主界面
+        if event.button() == Qt.MouseButton.LeftButton:
+            if not self._dragged:
+                self.clicked.emit()
+            self._drag_offset = None
+        super().mouseReleaseEvent(event)
+
     def place(self):
+        if self._user_moved:
+            return                      # 用户拖过位置，就尊重他的选择
         geo = _primary_geometry()
         if geo is None:
             return
