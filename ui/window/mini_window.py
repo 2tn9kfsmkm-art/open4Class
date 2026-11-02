@@ -241,6 +241,9 @@ class MiniController:
         self.panel.back_requested.connect(self._back)
 
         self._collapse = _make_timer(COLLAPSE_MS, self._collapse_to_chip)
+        # 自带一个 1 秒心跳：不依赖主窗口的时钟（最小化/失焦时更可靠）
+        self._tick = _make_timer(1000, self.refresh)
+        self._tick.setSingleShot(False)
 
     # ---- 显示 ----
     def show_panel(self):
@@ -248,6 +251,7 @@ class MiniController:
         self.panel.place()
         self.panel.show()          # 先显示，refresh 里的 isVisible() 才为真
         self.refresh()
+        self._tick.start()
         # 数据是异步加载的：稍后再刷一次，避免刚最小化时短暂空白
         from PySide6.QtCore import QTimer
         QTimer.singleShot(300, self.refresh)
@@ -255,6 +259,7 @@ class MiniController:
 
     def hide_all(self):
         self._collapse.stop()
+        self._tick.stop()
         self.panel.hide()
         self.chip.hide()
 
@@ -264,6 +269,9 @@ class MiniController:
     # ---- 刷新 ----
     def refresh(self):
         now = datetime.now()
+        if not (self.panel.isVisible() or self.chip.isVisible()):
+            self._tick.stop()
+            return
         if self.panel.isVisible():
             self.panel.time_l.setText(now.strftime('%H:%M'))   # 时间先走，最要紧
         try:
@@ -292,6 +300,7 @@ class MiniController:
         self.chip.refresh(datetime.now(), self._courses(), self._lesson_times())
         self.chip.place()
         self.chip.show()
+        self._tick.start()
 
     def _show_panel(self):
         self.chip.hide()
