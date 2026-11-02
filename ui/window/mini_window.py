@@ -242,8 +242,7 @@ class MiniController:
 
         self._collapse = _make_timer(COLLAPSE_MS, self._collapse_to_chip)
         # 自带一个 1 秒心跳：不依赖主窗口的时钟（最小化/失焦时更可靠）
-        self._tick = _make_timer(1000, self.refresh)
-        self._tick.setSingleShot(False)
+        self._tick = _make_timer(1000, self.refresh, single_shot=False)
 
     # ---- 显示 ----
     def show_panel(self):
@@ -269,9 +268,6 @@ class MiniController:
     # ---- 刷新 ----
     def refresh(self):
         now = datetime.now()
-        if not (self.panel.isVisible() or self.chip.isVisible()):
-            self._tick.stop()
-            return
         if self.panel.isVisible():
             self.panel.time_l.setText(now.strftime('%H:%M'))   # 时间先走，最要紧
         try:
@@ -305,6 +301,9 @@ class MiniController:
     def _show_panel(self):
         self.chip.hide()
         self.show_panel()
+        self._tick.start()
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(50, self.refresh)
 
     def _back(self):
         self.hide_all()
@@ -312,10 +311,10 @@ class MiniController:
             self._on_back()
 
 
-def _make_timer(ms, slot):
+def _make_timer(ms, slot, single_shot=True):
     from PySide6.QtCore import QTimer
     timer = QTimer()
-    timer.setSingleShot(True)
+    timer.setSingleShot(single_shot)
     timer.setInterval(ms)
     timer.timeout.connect(slot)
     return timer
