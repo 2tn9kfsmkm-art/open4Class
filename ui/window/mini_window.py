@@ -155,7 +155,10 @@ class TopBar(QWidget):
             self.next_l.setText('')
 
         self.info_l.setText(_nearest_countdown(now, countdowns))
-        self._progress = _segment_progress(now, state)
+        new_progress = _segment_progress(now, state)
+        if abs(new_progress - self._progress) > 0.001:
+            self._progress = new_progress
+            self.update()          # 进度条是自绘的，必须主动请求重绘
 
     def place(self):
         geo = _primary_geometry()
