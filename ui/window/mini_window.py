@@ -40,6 +40,18 @@ def _primary_geometry():
     return screen.availableGeometry() if screen is not None else None
 
 
+def _segment_progress(now: datetime, state: dict) -> float:
+    """当前时段（一节课或一个课间）已经过去的比例。"""
+    start, end = state.get('starts_at'), state.get('ends_at')
+    if start is None or end is None or start >= end:
+        return 0.0
+    total = (end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)
+    if total <= 0:
+        return 0.0
+    passed = (now.hour * 60 + now.minute) - (start.hour * 60 + start.minute)
+    return max(0.0, min(1.0, passed / total))
+
+
 def _nearest_countdown(now: datetime, countdowns) -> str:
     best, best_days = '', None
     for item in countdowns or []:
@@ -70,6 +82,7 @@ class TopBar(QWidget):
         layout.setContentsMargins(28, 0, 28, 0)
         layout.setSpacing(24)
 
+        self._progress = 0.0        # 当前时段已过比例 0~1
         self.time_l = QLabel('--:--')
         self.time_l.setStyleSheet(
             f'color: {COLORS["white"]}; font-size: 26pt; font-weight: bold;'
@@ -101,6 +114,12 @@ class TopBar(QWidget):
         painter.setBrush(QColor(155, 13, 20, 175))
         painter.drawRoundedRect(self.rect(), 16, 16)
 
+        # 顶部进度条：当前这节课/这个课间还剩多少（红色不透明、无边框）
+        if self._progress > 0:
+            bar_w = int(self.width() * min(1.0, self._progress))
+            painter.setBrush(QColor(230, 40, 45, 255))
+            painter.drawRoundedRect(0, 0, bar_w, 5, 2.5, 2.5)
+
     def refresh(self, now, courses, countdowns, lesson_times=None):
         self.time_l.setText(now.strftime('%H:%M'))
         state = lesson_state(now, lesson_times)
@@ -120,6 +139,7 @@ class TopBar(QWidget):
             self.next_l.setText('')
 
         self.info_l.setText(_nearest_countdown(now, countdowns))
+        self._progress = _segment_progress(now, state)
 
     def place(self):
         geo = _primary_geometry()

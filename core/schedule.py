@@ -71,19 +71,20 @@ def lesson_state(now: datetime, times) -> dict:
         if start <= hhmm <= end:
             return {"status": "lesson", "current": i,
                     "next": i + 1 if i + 1 < len(slots) else None,
-                    "ends_at": end}
+                    "starts_at": start, "ends_at": end}
 
     if hhmm < slots[0][0]:
         return {"status": "before", "current": None, "next": 0,
-                "ends_at": slots[0][0]}
+                "starts_at": hhmm, "ends_at": slots[0][0]}
 
     for i, (start, end) in enumerate(slots):
         if hhmm < start:
+            prev_end = slots[i - 1][1] if i > 0 else hhmm
             return {"status": "break", "current": None, "next": i,
-                    "ends_at": start}
+                    "starts_at": prev_end, "ends_at": start}
 
     return {"status": "after", "current": None, "next": None,
-            "ends_at": slots[-1][1]}
+            "starts_at": slots[-1][1], "ends_at": slots[-1][1]}
 
 
 def describe(state: dict, courses: list[str]) -> tuple[str, str]:
