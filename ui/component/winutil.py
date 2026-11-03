@@ -90,3 +90,34 @@ def foreground_class() -> str:
 def is_shell_foreground() -> bool:
     """前台是不是开始菜单/桌面这类系统外壳。"""
     return foreground_class() in _SHELL_CLASSES
+
+
+def foreground_is_fullscreen() -> bool:
+    """当前前台窗口是不是全屏（PPT 放映、视频、全屏浏览器等）。"""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return False
+        if foreground_class() in _SHELL_CLASSES:
+            return False
+
+        rect = wintypes.RECT()
+        if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            return False
+
+        screen_w = user32.GetSystemMetrics(0)
+        screen_h = user32.GetSystemMetrics(1)
+        if screen_w <= 0 or screen_h <= 0:
+            return False
+
+        # 前后留 4px 容差，避免无边框全屏差一两个像素被判成窗口
+        covers = (rect.left <= 4 and rect.top <= 4
+                  and rect.right >= screen_w - 4
+                  and rect.bottom >= screen_h - 4)
+        return covers
+    except Exception:                           # noqa: BLE001
+        return False

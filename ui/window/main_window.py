@@ -24,7 +24,9 @@ from ui.window.message_editor import wn_Message
 from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
-from ui.component.winutil import force_foreground, is_shell_foreground
+from ui.component.winutil import (
+    force_foreground, foreground_is_fullscreen, is_shell_foreground,
+)
 from ui.window.mini_window import MiniController
 from ui.window.settings_window import SettingsDialog
 from services.loading import loadPool, wait_all
@@ -183,7 +185,16 @@ class Main(wn_Main, QMainWindow):
             if not mini.is_visible():
                 mini.show_all()
             return
-        if app_active or mini.is_visible():
+        if app_active:
+            if mini.is_visible():
+                mini.hide_all()
+            return
+        # 别的软件全屏放映时浮出来（上课放 PPT 也能瞄一眼课表）；普通窗口不打扰
+        if not is_shell_foreground() and foreground_is_fullscreen():
+            if not mini.is_visible():
+                mini.show_all()
+            return
+        if mini.is_visible():
             mini.hide_all()
 
     # ---------- 悬浮窗数据 ----------
