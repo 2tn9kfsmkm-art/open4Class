@@ -25,7 +25,7 @@ from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
 from ui.component.winutil import (
-    force_foreground, foreground_is_fullscreen, is_shell_foreground,
+    force_foreground, foreground_covers_screen, is_shell_foreground,
 )
 from ui.window.mini_window import MiniController
 from ui.window.settings_window import SettingsDialog
@@ -189,8 +189,9 @@ class Main(wn_Main, QMainWindow):
             if mini.is_visible():
                 mini.hide_all()
             return
-        # 别的软件全屏放映时浮出来（上课放 PPT 也能瞄一眼课表）；普通窗口不打扰
-        if not is_shell_foreground() and foreground_is_fullscreen():
+        # 别的软件最大化/全屏时浮出来（放 PPT、全屏浏览都能瞄一眼课表）；
+        # 普通大小的窗口不打扰
+        if not is_shell_foreground() and foreground_covers_screen():
             if not mini.is_visible():
                 mini.show_all()
             return

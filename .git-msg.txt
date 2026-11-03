@@ -1,9 +1,6 @@
-﻿feat(悬浮层): 全屏应用在前台时也显示悬浮层
+﻿feat(悬浮层): 最大化窗口也算「占满屏幕」，Edge 最大化时也显示
 
-只认「最小化」太死，放 PPT 全屏时就看不到课表了。现在增加一种情况：
-  * 主窗口最小化 -> 显示
-  * 本程序在前台 -> 隐藏
-  * 前台是系统外壳（开始菜单/桌面/任务栏）-> 隐藏
-  * 前台是别的软件且全屏（GetWindowRect 铺满主屏，容差 4px）-> 显示
-  * 其余普通窗口 -> 隐藏
-新增 winutil.foreground_is_fullscreen()。
+之前只认真正铺满整屏（F11/放映），最大化的 Edge 因为有任务栏、高度差 5% 被判成普通窗口。
+新增 winutil.foreground_covers_screen(min_ratio=0.9)：宽高各达到主屏 90% 即算；
+foreground_is_fullscreen 保留给需要严格全屏的场合。
+悬浮层判定改为 covers_screen，开始菜单/桌面仍然排除。
