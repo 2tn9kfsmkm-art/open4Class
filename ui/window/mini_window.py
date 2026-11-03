@@ -125,11 +125,15 @@ class TopBar(QWidget):
             clip.addRoundedRect(QRectF(self.rect()), 16, 16)
             painter.save()
             painter.setClipPath(clip)
+            # 底槽：整条浅灰，表示"这一整段"
+            painter.setBrush(QColor(255, 255, 255, 70))
+            painter.drawRect(0, 0, self.width(), 5)
+            # 已过部分：红色
             painter.setBrush(QColor(230, 40, 45, 255))
             painter.drawRect(0, 0, bar_w, 5)
-            # 右端加一截浅色，当作"已走到这里"的标记
-            painter.setBrush(QColor(255, 255, 255, 200))
-            painter.drawRect(max(0, bar_w - 3), 0, 3, 5)
+            # 分界处一条浅色竖线
+            painter.setBrush(QColor(255, 255, 255, 220))
+            painter.drawRect(max(0, bar_w - 2), 0, 2, 5)
             painter.restore()
 
     def refresh(self, now, courses, countdowns, lesson_times=None):
