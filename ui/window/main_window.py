@@ -167,23 +167,24 @@ class Main(wn_Main, QMainWindow):
 
     # ---------- 悬浮层显示策略 ----------
     def _poll_mini(self):
-        """主窗口最小化或不在前台时显示悬浮层；回到前台立即收起。"""
+        """只跟着"最小化"走：不在前台但窗口还在时，不弹悬浮层。
+
+        之前按"失去前台"就弹，结果打开开始菜单、托盘、别的软件都会冒出来，
+        反而挡视线。现在只有最小化（或点 × 收进悬浮层）才显示。
+        """
         mini = getattr(self, 'mini', None)
         if mini is None:
             return
         app = QApplication.instance()
-        if app is not None and app.applicationState() == Qt.ApplicationState.ApplicationActive:
-            if mini.is_visible():
-                mini.hide_all()
-            return
+        app_active = (app is not None
+                      and app.applicationState() == Qt.ApplicationState.ApplicationActive)
+
         if self.isMinimized():
             if not mini.is_visible():
                 mini.show_all()
             return
-        if is_shell_foreground():
-            return                      # 开始菜单/桌面：别冒出来
-        if not mini.is_visible():
-            mini.show_all()
+        if app_active or mini.is_visible():
+            mini.hide_all()
 
     # ---------- 悬浮窗数据 ----------
     def _today_lesson_times(self):
