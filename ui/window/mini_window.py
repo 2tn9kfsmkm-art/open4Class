@@ -193,7 +193,7 @@ class EntryChip(QWidget):
         self.label = QLabel('班级')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 20pt; font-weight: bold;'
+            f'color: {COLORS["white"]}; font-size: 14pt; font-weight: bold;'
             'background: transparent; border: none;')
         layout.addWidget(self.label)
 
