@@ -86,5 +86,6 @@ class TestShowAll:
         controller.hide_all()
         assert not controller._timer.isActive()      # noqa: SLF001
 
-    def test_timer_is_one_second(self, controller):
-        assert controller._timer.interval() == 1000  # noqa: SLF001
+    def test_timer_is_fast_enough(self, controller):
+        # 进度条要连贯，心跳不能慢于 1 秒
+        assert controller._timer.interval() <= 1000  # noqa: SLF001

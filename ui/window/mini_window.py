@@ -48,10 +48,13 @@ def _segment_progress(now: datetime, state: dict) -> float:
     start, end = state.get('starts_at'), state.get('ends_at')
     if start is None or end is None or start >= end:
         return 0.0
-    total = (end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)
+    def _secs(t):
+        return t.hour * 3600 + t.minute * 60 + t.second
+
+    total = _secs(end) - _secs(start)
     if total <= 0:
         return 0.0
-    passed = (now.hour * 60 + now.minute) - (start.hour * 60 + start.minute)
+    passed = _secs(now.time()) - _secs(start)
     return max(0.0, min(1.0, passed / total))
 
 
@@ -251,7 +254,7 @@ class MiniController:
         self.chip.clicked.connect(self._back)
 
         self._timer = QTimer(self.bar)
-        self._timer.setInterval(1000)
+        self._timer.setInterval(500)
         self._timer.timeout.connect(self.refresh)
 
     # ---- 显示 / 隐藏 ----
