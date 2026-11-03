@@ -11,7 +11,10 @@
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QGuiApplication, QMouseEvent, QPainter
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import (
+    QColor, QGuiApplication, QMouseEvent, QPainter, QPainterPath,
+)
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
 )
@@ -117,8 +120,17 @@ class TopBar(QWidget):
         # 顶部进度条：当前这节课/这个课间还剩多少（红色不透明、无边框）
         if self._progress > 0:
             bar_w = int(self.width() * min(1.0, self._progress))
+            # 按顶条圆角裁剪，避免进度条自己的圆角在左上角露出来
+            clip = QPainterPath()
+            clip.addRoundedRect(QRectF(self.rect()), 16, 16)
+            painter.save()
+            painter.setClipPath(clip)
             painter.setBrush(QColor(230, 40, 45, 255))
-            painter.drawRoundedRect(0, 0, bar_w, 5, 2.5, 2.5)
+            painter.drawRect(0, 0, bar_w, 5)
+            # 右端加一截浅色，当作"已走到这里"的标记
+            painter.setBrush(QColor(255, 255, 255, 200))
+            painter.drawRect(max(0, bar_w - 3), 0, 3, 5)
+            painter.restore()
 
     def refresh(self, now, courses, countdowns, lesson_times=None):
         self.time_l.setText(now.strftime('%H:%M'))
