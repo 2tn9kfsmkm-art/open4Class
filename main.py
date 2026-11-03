@@ -10,7 +10,7 @@
 import os
 import sys
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -25,6 +25,8 @@ _LOCK_NAME = 'instance.lock'
 
 
 _MUTEX_NAME = 'Global\\ClassManager-SingleInstance-v1'
+# 第二个实例通过这个文件请求"把窗口叫出来"，运行中的实例轮询后删除
+_SHOW_REQUEST = 'show.request'
 _ERROR_ALREADY_EXISTS = 183
 
 
@@ -61,15 +63,15 @@ def main():
     # ---- 多开限制 ----
     mutex = _acquire_mutex()
     if mutex is None:
-        from PySide6.QtCore import QTimer
-        box = QMessageBox(
-            QMessageBox.Icon.Information, '已经在运行',
-            '班级管理系统已经在运行了。\n'
-            '请到任务栏、或右下角的「班级」小窗把它调出来。\n\n'
-            '（这个提示 4 秒后自动关闭）', QMessageBox.StandardButton.Ok)
-        box.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        QTimer.singleShot(4000, box.close)      # 无人操作也会自己消失
-        box.exec()
+        # 已有实例：留个"请显示窗口"的请求，然后自己退出
+        from config import DATA_BASE
+        try:
+            with open(os.path.join(DATA_BASE, _SHOW_REQUEST), 'w',
+                      encoding='utf-8') as f:
+                f.write(str(os.getpid()))
+        except OSError as e:                    # noqa: BLE001
+            print(f'[single-instance] 无法写入请求文件: {e!r}')
+        print('已经有一个班级管理系统在运行，已请它把窗口调出来。')
         return
 
     setQss(QSS_DIR + 'mainpage.qss', app)
@@ -85,15 +87,39 @@ def main():
             if not SetupWizard.run():
                 sys.exit(0)
 
-    mainwindow = Main()
-    mainwindow.showMaximized()
+    # 监听"叫窗口"请求（放在建窗口之前：即使主窗口还卡在询问框里也能响应）
+    from config import DATA_BASE
+    request_path = os.path.join(DATA_BASE, _SHOW_REQUEST)
+    holder = {'win': None}
 
     def _activate():
-        if mainwindow.isMinimized():
-            mainwindow.showNormal()
-        mainwindow.showMaximized()
-        mainwindow.raise_()
-        mainwindow.activateWindow()
+        win = holder['win']
+        if win is None:
+            return
+        if win.isMinimized():
+            win.showNormal()
+        win.showMaximized()
+        win.raise_()
+        win.activateWindow()
+
+    def _check_request():
+        if os.path.exists(request_path):
+            try:
+                os.remove(request_path)
+            except OSError:
+                pass
+            _activate()
+
+    watcher = QTimer()
+    watcher.setInterval(500)
+    watcher.timeout.connect(_check_request)
+    watcher.start()
+    _check_request()                            # 启动瞬间清掉上次残留
+
+    mainwindow = Main()
+    holder['win'] = mainwindow
+    mainwindow.showMaximized()
+    _check_request()
 
     app.exec()
 
