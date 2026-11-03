@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 import bootstrap
 from config import QSS_DIR, RESOURCE_DIR
 from tools.qss2qt import setQss
+from ui.component.winutil import force_foreground
 from ui.window.main_window import Main
 from ui.window.setup_wizard import SetupWizard
 
@@ -93,14 +94,7 @@ def main():
     holder = {'win': None}
 
     def _activate():
-        win = holder['win']
-        if win is None:
-            return
-        if win.isMinimized():
-            win.showNormal()
-        win.showMaximized()
-        win.raise_()
-        win.activateWindow()
+        force_foreground(holder['win'])
 
     def _check_request():
         if os.path.exists(request_path):

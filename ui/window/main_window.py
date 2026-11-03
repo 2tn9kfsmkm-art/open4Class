@@ -24,6 +24,7 @@ from ui.window.message_editor import wn_Message
 from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
+from ui.component.winutil import force_foreground
 from ui.window.mini_window import MiniController
 from ui.window.settings_window import SettingsDialog
 from services.loading import loadPool, wait_all
@@ -186,8 +187,7 @@ class Main(wn_Main, QMainWindow):
             self.showMaximized()
         else:
             self.showNormal()
-        self.raise_()
-        self.activateWindow()
+        force_foreground(self)
 
     # ---------- 最小化 / 恢复 ----------
     def changeEvent(self, event):
