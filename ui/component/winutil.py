@@ -57,3 +57,36 @@ def force_foreground(win) -> None:
         win.activateWindow()
     except Exception:                           # noqa: BLE001
         pass
+
+
+# 这些窗口类属于系统外壳（开始菜单、桌面、任务栏），它们抢到前台时
+# 不应该被当成"用户切换到了别的软件"
+_SHELL_CLASSES = {
+    'Windows.UI.Core.CoreWindow',
+    'XamlExplorerHostIslandWindow',
+    'Shell_TrayWnd',
+    'Shell_SecondaryTrayWnd',
+    'Progman',
+    'WorkerW',
+    'Button',
+}
+
+
+def foreground_class() -> str:
+    """当前前台窗口的类名；拿不到返回空串。"""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return ''
+        buf = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(hwnd, buf, 256)
+        return buf.value
+    except Exception:                           # noqa: BLE001
+        return ''
+
+
+def is_shell_foreground() -> bool:
+    """前台是不是开始菜单/桌面这类系统外壳。"""
+    return foreground_class() in _SHELL_CLASSES

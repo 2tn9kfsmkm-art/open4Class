@@ -24,7 +24,7 @@ from ui.window.message_editor import wn_Message
 from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
-from ui.component.winutil import force_foreground
+from ui.component.winutil import force_foreground, is_shell_foreground
 from ui.window.mini_window import MiniController
 from ui.window.settings_window import SettingsDialog
 from services.loading import loadPool, wait_all
@@ -140,6 +140,12 @@ class Main(wn_Main, QMainWindow):
             )
             self.tray.show()
 
+        # 悬浮层随前台状态自动出现/消失（每 0.4 秒判断一次）
+        self._mini_poll = QTimer(self)
+        self._mini_poll.setInterval(400)
+        self._mini_poll.timeout.connect(self._poll_mini)
+        self._mini_poll.start()
+
         # 三层窗口：主窗口 --最小化--> 悬浮窗 --20 秒--> 右下角小方块
         self.mini = MiniController(
             courses_provider=self._today_courses,
@@ -158,6 +164,26 @@ class Main(wn_Main, QMainWindow):
             self.data = loadPool(parent=self, widget=self)
         except Exception as e:                  # noqa: BLE001
             print(f'[reload] 重新加载失败: {e!r}')
+
+    # ---------- 悬浮层显示策略 ----------
+    def _poll_mini(self):
+        """主窗口最小化或不在前台时显示悬浮层；回到前台立即收起。"""
+        mini = getattr(self, 'mini', None)
+        if mini is None:
+            return
+        app = QApplication.instance()
+        if app is not None and app.applicationState() == Qt.ApplicationState.ApplicationActive:
+            if mini.is_visible():
+                mini.hide_all()
+            return
+        if self.isMinimized():
+            if not mini.is_visible():
+                mini.show_all()
+            return
+        if is_shell_foreground():
+            return                      # 开始菜单/桌面：别冒出来
+        if not mini.is_visible():
+            mini.show_all()
 
     # ---------- 悬浮窗数据 ----------
     def _today_lesson_times(self):
@@ -205,18 +231,8 @@ class Main(wn_Main, QMainWindow):
                 mini.hide_all()
             return
 
-        # 主窗口被别的程序盖住（切到任务栏其它应用）时，也浮出小窗；
-        # 但本程序自己的对话框（设置、向导）弹出时不要跟着冒出来。
-        if event.type() == QEvent.Type.ActivationChange:
-            app = QApplication.instance()
-            app_active = (app is not None
-                          and app.applicationState() == Qt.ApplicationState.ApplicationActive)
-            if app_active:
-                return
-            if not self.isActiveWindow() and not self.isMinimized() and self.isVisible():
-                QTimer.singleShot(150, mini.show_all)
-            elif self.isActiveWindow() and mini.is_visible():
-                mini.hide_all()
+        # 悬浮层的显示/隐藏交给 _poll_mini 轮询处理：
+        # 只靠激活事件会漏掉"从桌面点回来""关掉上层窗口"这些路径。
 
     def closeEvent(self, event):
         if getattr(self, '_really_quit', False):
