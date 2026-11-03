@@ -28,14 +28,14 @@ class TestTopBar:
         controller.bar.refresh(datetime(2026, 11, 2, 7, 45),
                                ['语文', '数学'], [], DEFAULT_LESSON_TIMES)
         assert controller.bar.time_l.text() == '07:45'
-        assert controller.bar.course_l.text() == '第 1 节 · 语文'
-        assert '数学' in controller.bar.next_l.text()
+        assert controller.bar.course_l.text() == '语文'
+        assert controller.bar.next_l.text() == '下一节 数学'
 
     def test_break_shows_slot_only(self, controller):
         controller.bar.refresh(datetime(2026, 11, 2, 8, 25),
                                ['语文', '数学'], [], DEFAULT_LESSON_TIMES)
         assert controller.bar.course_l.text() == '课间'
-        assert '数学' in controller.bar.next_l.text()
+        assert controller.bar.next_l.text() == '下一节 数学'
 
     def test_after_school(self, controller):
         controller.bar.refresh(datetime(2026, 11, 2, 19, 0),

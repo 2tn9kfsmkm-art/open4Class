@@ -106,7 +106,7 @@ class TopBar(QWidget):
         state = lesson_state(now, lesson_times)
         slot, subject = describe(state, list(courses or []))
         if state['status'] == 'lesson':
-            self.course_l.setText(f'{slot} · {subject}')
+            self.course_l.setText(subject)      # 只写科目，不带「第 N 节」
         else:
             self.course_l.setText(slot)
 
@@ -115,7 +115,7 @@ class TopBar(QWidget):
         if state['status'] == 'after':
             self.next_l.setText('今天的课已结束')
         elif text:
-            self.next_l.setText(f'下一节 {nxt + 1}：{text}')
+            self.next_l.setText(f'下一节 {text}')
         else:
             self.next_l.setText('')
 
@@ -125,7 +125,7 @@ class TopBar(QWidget):
         geo = _primary_geometry()
         if geo is None:
             return
-        width = min(1180, int(geo.width() * 0.72))
+        width = min(1700, int(geo.width() * 0.88))
         self.setFixedWidth(width)
         self.move(geo.left() + (geo.width() - width) // 2, geo.top() + 12)
 
