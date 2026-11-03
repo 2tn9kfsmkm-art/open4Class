@@ -30,6 +30,20 @@ def force_foreground(win) -> None:
         user32.BringWindowToTop(hwnd)
         if user32.GetForegroundWindow() == hwnd:
             return
+
+        # 前台锁：把自己的线程输入挂到当前前台窗口的线程上再抢一次
+        kernel32 = ctypes.windll.kernel32
+        fg = user32.GetForegroundWindow()
+        if fg:
+            fg_thread = user32.GetWindowThreadProcessId(fg, None)
+            my_thread = kernel32.GetCurrentThreadId()
+            attached = user32.AttachThreadInput(my_thread, fg_thread, True)
+            user32.SetForegroundWindow(hwnd)
+            user32.BringWindowToTop(hwnd)
+            if attached:
+                user32.AttachThreadInput(my_thread, fg_thread, False)
+            if user32.GetForegroundWindow() == hwnd:
+                return
     except Exception:                           # noqa: BLE001
         pass
 

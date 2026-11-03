@@ -28,6 +28,7 @@ _LOCK_NAME = 'instance.lock'
 _MUTEX_NAME = 'Global\\ClassManager-SingleInstance-v1'
 # 第二个实例通过这个文件请求"把窗口叫出来"，运行中的实例轮询后删除
 _SHOW_REQUEST = 'show.request'
+_PID_FILE = 'instance.pid'
 _ERROR_ALREADY_EXISTS = 183
 
 
@@ -66,6 +67,16 @@ def main():
     if mutex is None:
         # 已有实例：留个"请显示窗口"的请求，然后自己退出
         from config import DATA_BASE
+        # 关键：第二个进程此刻是前台，由它授权第一个进程抢前台
+        try:
+            import ctypes
+            pid_file = os.path.join(DATA_BASE, _PID_FILE)
+            with open(pid_file, 'r', encoding='utf-8') as f:
+                other = int(f.read().strip() or 0)
+            if other > 0:
+                ctypes.windll.user32.AllowSetForegroundWindow(other)
+        except Exception:                       # noqa: BLE001
+            pass
         try:
             with open(os.path.join(DATA_BASE, _SHOW_REQUEST), 'w',
                       encoding='utf-8') as f:
@@ -109,6 +120,13 @@ def main():
     watcher.timeout.connect(_check_request)
     watcher.start()
     _check_request()                            # 启动瞬间清掉上次残留
+
+    from config import DATA_BASE as _DB
+    try:
+        with open(os.path.join(_DB, _PID_FILE), 'w', encoding='utf-8') as f:
+            f.write(str(os.getpid()))
+    except OSError:
+        pass
 
     mainwindow = Main()
     holder['win'] = mainwindow
