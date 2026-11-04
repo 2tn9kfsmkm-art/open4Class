@@ -93,16 +93,6 @@ class Main(wn_Main, QMainWindow):
         logo = QPixmap(RESOURCE_DIR + 'logo.png')
         self.icon_l.setPixmap(logo)
 
-        # 侧栏最小化按钮：倒计时下方、设置入口上方
-        self.mini_pb = QPushButton('最小化')
-        self.mini_pb.setMinimumHeight(36)          # 触摸目标
-        self.mini_pb.setStyleSheet('font-size: 12pt; color: #F2DCDD;')
-        self.mini_pb.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.mini_pb.clicked.connect(self.showMinimized)
-        # 放在设置入口下方、logo 上方
-        _idx = self.verticalLayout.indexOf(self.icon_l)
-        self.verticalLayout.insertWidget(_idx, self.mini_pb)
-
         # 倒计时
         self._countdown_labels = []
         self._render_countdowns()
@@ -306,7 +296,7 @@ class Main(wn_Main, QMainWindow):
         # 重置拉伸：时间 / 倒计时等比，底部设置区（按钮 + logo）固定高度
         for i in range(layout.count()):
             w = layout.itemAt(i).widget()
-            fixed = w in (self.setting_pb, self.icon_l, self.mini_pb)
+            fixed = w in (self.setting_pb, self.icon_l)
             layout.setStretch(i, 0 if fixed else 1)
 
         self._update_countdowns()
@@ -399,7 +389,7 @@ class Main(wn_Main, QMainWindow):
             self, '_menu_closed_at', time.monotonic())
 
         # 盖住侧栏，但把底部 logo 让出来：这样还能再点图标收起
-        logo_h = self.icon_l.height() + 8
+        logo_h = self.icon_l.height() + 24
         top_left = sidebar.mapToGlobal(QPoint(0, 0))
         menu.show_over(top_left, sidebar.width(),
                        max(120, sidebar.height() - logo_h))
