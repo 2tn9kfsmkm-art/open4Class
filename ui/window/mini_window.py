@@ -29,6 +29,7 @@ _FLAGS = (
 )
 
 _BAR_HEIGHT = 96
+_PROGRESS_H = 8      # ???????
 _CHIP_SIZE = 112
 
 
