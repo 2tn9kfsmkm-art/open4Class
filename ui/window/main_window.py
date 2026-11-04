@@ -369,27 +369,20 @@ class Main(wn_Main, QMainWindow):
 
     def open_start_menu(self):
         """点 logo 弹出开始菜单：设置 / 最小化 / 退出程序，宽度与侧栏一致。"""
-        sidebar = self.sidebar_wg
-        menu = QMenu(self)
-        menu.setFixedWidth(sidebar.width())
-        menu.setStyleSheet(
-            f'QMenu {{ background-color: {COLORS["primary"]}; color: white;'
-            '  border: none; padding: 4px 0px; }}'
-            'QMenu::item { padding: 14px 0px; font-size: 18pt; }'
-            'QMenu::item:selected { background-color: rgba(0, 0, 0, 0.28); }'
-        )
-        for text, slot in (('设置', self.open_settings),
-                           ('最小化', self.showMinimized),
-                           ('退出程序', self.quit_app)):
-            action = menu.addAction(text)
-            action.triggered.connect(slot)
+        from ui.component.start_menu import StartMenu
 
-        # 贴着 logo 顶边、与侧栏左边缘对齐，向上展开
-        top_left = sidebar.mapToGlobal(QPoint(0, sidebar.rect().top()))
+        sidebar = self.sidebar_wg
+        menu = StartMenu(
+            on_settings=lambda: self.open_settings(),
+            on_minimize=lambda: self.showMinimized(),
+            on_quit=lambda: self.quit_app(),
+            width=sidebar.width(),
+            parent=self,
+        )
         logo_top = self.icon_l.mapToGlobal(QPoint(0, 0)).y()
-        menu.adjustSize()
-        menu.exec(QPoint(top_left.x(),
-                         logo_top - menu.height() - 6))
+        left = sidebar.mapToGlobal(QPoint(0, 0)).x()
+        menu.show_above(left, logo_top)
+        self._start_menu = menu          # 持有引用，避免被回收
 
     def open_settings(self):
         dlg = SettingsDialog(self)
