@@ -384,8 +384,11 @@ class Main(wn_Main, QMainWindow):
             on_quit=lambda: self.quit_app(),
             parent=self,
         )
+        # 盖住侧栏，但把底部 logo 让出来：这样还能再点图标收起
+        logo_h = self.icon_l.height() + 8
         top_left = sidebar.mapToGlobal(QPoint(0, 0))
-        menu.show_over(top_left, sidebar.width(), sidebar.height())
+        menu.show_over(top_left, sidebar.width(),
+                       max(120, sidebar.height() - logo_h))
         self._start_menu = menu          # 持有引用，避免被回收
 
     def open_settings(self):
