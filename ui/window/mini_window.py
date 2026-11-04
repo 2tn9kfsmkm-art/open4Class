@@ -13,7 +13,7 @@ from datetime import datetime
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import (
-    QColor, QGuiApplication, QMouseEvent, QPainter, QPainterPath,
+    QColor, QFont, QGuiApplication, QMouseEvent, QPainter, QPainterPath,
 )
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
@@ -82,25 +82,16 @@ class TopBar(QWidget):
         self.setWindowFlags(_FLAGS)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedHeight(_BAR_HEIGHT)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(28, 0, 28, 0)
         layout.setSpacing(24)
 
         self._progress = 0.0        # 当前时段已过比例 0~1
-        self.time_l = QLabel('--:--')
-        self.time_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 26pt; font-weight: bold;'
-            'background: transparent; border: none;')
-        self.course_l = QLabel('')
-        self.course_l.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 18pt; font-weight: bold;'
-            'background: transparent; border: none;')
-        self.next_l = QLabel('')
-        self.next_l.setStyleSheet('color: #F2DCDD; font-size: 12pt; background: transparent; border: none;')
-        self.info_l = QLabel('')
-        self.info_l.setStyleSheet('color: #F2DCDD; font-size: 12pt; background: transparent; border: none;')
+        self.time_l = self._label(26, COLORS['white'], bold=True)
+        self.course_l = self._label(18, COLORS['white'], bold=True)
+        self.next_l = self._label(12, '#F2DCDD')
+        self.info_l = self._label(12, '#F2DCDD')
 
         self.time_l.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.time_l)
@@ -109,9 +100,25 @@ class TopBar(QWidget):
         layout.addSpacing(12)
         layout.addWidget(self.next_l)
         layout.addStretch(1)
-        for _lbl in (self.time_l, self.course_l, self.next_l, self.info_l):
-            _lbl.setAutoFillBackground(False)
         layout.addWidget(self.info_l)
+
+        # ????????300% ???????????????????????
+        tallest = max(lbl.fontMetrics().height()
+                      for lbl in (self.time_l, self.course_l,
+                                  self.next_l, self.info_l))
+        self.setFixedHeight(max(tallest + 34, 84))
+
+    @staticmethod
+    def _label(pt: int, color: str, bold: bool = False) -> QLabel:
+        lbl = QLabel('')
+        font = QFont()
+        font.setPointSize(pt)
+        font.setBold(bold)
+        lbl.setFont(font)
+        lbl.setStyleSheet(
+            f'color: {color}; background: transparent; border: none;')
+        lbl.setAutoFillBackground(False)
+        return lbl
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -182,7 +189,6 @@ class EntryChip(QWidget):
         self.setWindowFlags(_FLAGS)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(_CHIP_SIZE, _CHIP_SIZE)
         self.setCursor(Qt.CursorShape.SizeAllCursor)
         self._drag_offset = None
         self._dragged = False
@@ -192,10 +198,16 @@ class EntryChip(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel('班级')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setStyleSheet(
-            f'color: {COLORS["white"]}; font-size: 14pt; font-weight: bold;'
-            'background: transparent; border: none;')
+        _f = QFont()
+        _f.setPointSize(14)
+        _f.setBold(True)
+        self.label.setFont(_f)
         layout.addWidget(self.label)
+
+        # ????????300% ????????????
+        _m = self.label.fontMetrics()
+        _size = max(_m.height() + 46, 96)
+        self.setFixedSize(_size, _size)
 
     def paintEvent(self, event):
         painter = QPainter(self)
