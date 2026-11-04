@@ -106,7 +106,7 @@ class TopBar(QWidget):
         tallest = max(lbl.fontMetrics().height()
                       for lbl in (self.time_l, self.course_l,
                                   self.next_l, self.info_l))
-        self.setFixedHeight(max(tallest + 34, 84))
+        self.setFixedHeight(max(tallest + 52, 100))
 
     @staticmethod
     def _label(pt: int, color: str, bold: bool = False) -> QLabel:
@@ -137,13 +137,13 @@ class TopBar(QWidget):
             painter.setClipPath(clip)
             # 底槽：整条浅灰，表示"这一整段"
             painter.setBrush(QColor(255, 255, 255, 70))
-            painter.drawRect(0, 0, self.width(), 5)
+            painter.drawRect(0, 0, self.width(), _PROGRESS_H)
             # 已过部分：红色
             painter.setBrush(QColor(230, 40, 45, 255))
-            painter.drawRect(0, 0, bar_w, 5)
+            painter.drawRect(0, 0, bar_w, _PROGRESS_H)
             # 分界处一条浅色竖线
             painter.setBrush(QColor(255, 255, 255, 220))
-            painter.drawRect(max(0, bar_w - 2), 0, 2, 5)
+            painter.drawRect(max(0, bar_w - 3), 0, 3, _PROGRESS_H)
             painter.restore()
 
     def refresh(self, now, courses, countdowns, lesson_times=None):
@@ -202,6 +202,9 @@ class EntryChip(QWidget):
         _f.setPointSize(14)
         _f.setBold(True)
         self.label.setFont(_f)
+        self.label.setStyleSheet(
+            f'color: {COLORS["white"]}; background: transparent; border: none;')
+        self.label.setAutoFillBackground(False)
         layout.addWidget(self.label)
 
         # ????????300% ????????????
