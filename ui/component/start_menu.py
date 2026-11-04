@@ -53,8 +53,14 @@ class StartMenu(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(45, 5, 7, 252))     # 比侧栏深很多，几乎发黑
+        painter.setBrush(QColor(112, 12, 18, 250))  # 比侧栏深一档，不压太黑
         painter.drawRect(self.rect())
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        cb = getattr(self, 'on_closed', None)
+        if callable(cb):
+            cb()
 
     def mousePressEvent(self, event):
         # 落在按钮以外的区域（包括原来 logo 的位置）就收起

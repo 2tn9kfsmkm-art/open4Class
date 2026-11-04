@@ -368,8 +368,19 @@ class Main(wn_Main, QMainWindow):
         self.data.results['applications'] = chain.applications
 
     def open_start_menu(self):
-        """点 logo 弹出开始菜单，整块盖住侧栏；开着时再点一次就收起。"""
+        """点 logo 弹出开始菜单；开着时再点一次收起。
+
+        面板是 Qt.Popup：点 logo 时那一击会先关掉面板、再传给 logo，
+        "关闭"与"重新打开"会撞在一起。用 _menu_closed_at 做 0.4 秒防抖，
+        让关闭它的那一下不会又把它打开。
+        """
+        import time
         from ui.component.start_menu import StartMenu
+
+        closed_at = getattr(self, '_menu_closed_at', 0.0)
+        if closed_at and (time.monotonic() - closed_at) < 0.4:
+            self._menu_closed_at = 0.0
+            return                       # 这一下是关闭动作，忽略
 
         current = getattr(self, '_start_menu', None)
         if current is not None and current.isVisible():
@@ -384,6 +395,9 @@ class Main(wn_Main, QMainWindow):
             on_quit=lambda: self.quit_app(),
             parent=self,
         )
+        menu.on_closed = lambda: setattr(
+            self, '_menu_closed_at', time.monotonic())
+
         # 盖住侧栏，但把底部 logo 让出来：这样还能再点图标收起
         logo_h = self.icon_l.height() + 8
         top_left = sidebar.mapToGlobal(QPoint(0, 0))
