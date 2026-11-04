@@ -1,48 +1,44 @@
-"""侧栏底部的「开始菜单」：点学校 logo 向上弹出的三个选项。
+"""侧栏「开始菜单」：点学校 logo 后整块盖住侧栏的三个选项。
 
-用普通无边框面板而不是 QMenu —— QMenu 的内边距、对齐和圆角都很难调，
-这里自己摆按钮，视觉效果与侧栏一致。
+不圆角、不留边，按钮贴着底部，像 Windows 开始菜单那样占满整个侧栏区域。
 """
 
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtCore import QRectF
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
-
-from ui.tokens import COLORS
 
 _ITEMS = ('设置', '最小化', '退出程序')
 
 
 class StartMenu(QWidget):
-    def __init__(self, on_settings, on_minimize, on_quit, width=280, parent=None):
+    def __init__(self, on_settings, on_minimize, on_quit, parent=None):
         super().__init__(parent)
-        # Popup：点面板外面自动关闭
+        # Popup：点外面自动关闭；不做圆角，铺满侧栏
         self.setWindowFlags(
             Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedWidth(width)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(8, 8, 8, 12)
         layout.setSpacing(6)
+        layout.addStretch(1)          # 按钮贴着底部
 
         self.buttons = []
         for text, slot in zip(_ITEMS, (on_settings, on_minimize, on_quit)):
             btn = QPushButton(text)
-            btn.setMinimumHeight(52)
+            btn.setMinimumHeight(56)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(
                 'QPushButton {'
                 '  background: transparent;'
                 '  color: white;'
                 '  border: none;'
-                '  border-radius: 8px;'
+                '  border-radius: 6px;'
                 '  font-size: 17pt;'
                 '  text-align: center;'
                 '}'
-                'QPushButton:hover { background-color: rgba(0, 0, 0, 0.22); }'
-                'QPushButton:pressed { background-color: rgba(0, 0, 0, 0.34); }'
+                'QPushButton:hover { background-color: rgba(255, 255, 255, 0.14); }'
+                'QPushButton:pressed { background-color: rgba(0, 0, 0, 0.28); }'
             )
             btn.clicked.connect(self._make_handler(slot))
             layout.addWidget(btn)
@@ -56,18 +52,20 @@ class StartMenu(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        # 比侧栏更深一档，并用浅金细边和侧栏拉开层次
-        painter.setBrush(QColor(88, 8, 12, 250))
-        painter.setPen(QPen(QColor(201, 162, 39, 150), 1))
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 12, 12)
-        painter.drawPath(path)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(45, 5, 7, 252))     # 比侧栏深很多，几乎发黑
+        painter.drawRect(self.rect())
 
-    def show_above(self, anchor_x: int, anchor_top: int):
-        """在给定点的上方弹出。"""
-        self.adjustSize()
-        x = anchor_x
-        y = anchor_top - self.height() - 6
-        self.move(QPoint(x, max(0, y)))
+    def mousePressEvent(self, event):
+        # 落在按钮以外的区域（包括原来 logo 的位置）就收起
+        pos = event.position().toPoint()
+        if not any(btn.geometry().contains(pos) for btn in self.buttons):
+            self.close()
+            return
+        super().mousePressEvent(event)
+
+    def show_over(self, top_left: QPoint, width: int, height: int):
+        """正好盖住给定矩形（侧栏）。"""
+        self.setFixedSize(width, height)
+        self.move(top_left)
         self.show()

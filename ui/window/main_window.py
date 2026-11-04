@@ -368,7 +368,7 @@ class Main(wn_Main, QMainWindow):
         self.data.results['applications'] = chain.applications
 
     def open_start_menu(self):
-        """点 logo 弹出开始菜单；菜单开着时再点一次就关掉。"""
+        """点 logo 弹出开始菜单，整块盖住侧栏；开着时再点一次就收起。"""
         from ui.component.start_menu import StartMenu
 
         current = getattr(self, '_start_menu', None)
@@ -382,12 +382,10 @@ class Main(wn_Main, QMainWindow):
             on_settings=lambda: self.open_settings(),
             on_minimize=lambda: self.showMinimized(),
             on_quit=lambda: self.quit_app(),
-            width=sidebar.width(),
             parent=self,
         )
-        logo_top = self.icon_l.mapToGlobal(QPoint(0, 0)).y()
-        left = sidebar.mapToGlobal(QPoint(0, 0)).x()
-        menu.show_above(left, logo_top)
+        top_left = sidebar.mapToGlobal(QPoint(0, 0))
+        menu.show_over(top_left, sidebar.width(), sidebar.height())
         self._start_menu = menu          # 持有引用，避免被回收
 
     def open_settings(self):
