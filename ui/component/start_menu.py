@@ -5,7 +5,8 @@
 """
 
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
 from ui.tokens import COLORS
@@ -56,10 +57,11 @@ class StartMenu(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(COLORS['primary']))
+        # 比侧栏更深一档，并用浅金细边和侧栏拉开层次
+        painter.setBrush(QColor(88, 8, 12, 250))
+        painter.setPen(QPen(QColor(201, 162, 39, 150), 1))
         path = QPainterPath()
-        path.addRoundedRect(self.rect().adjusted(0, 0, 0, 0), 12, 12)
+        path.addRoundedRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 12, 12)
         painter.drawPath(path)
 
     def show_above(self, anchor_x: int, anchor_top: int):

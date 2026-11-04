@@ -368,8 +368,14 @@ class Main(wn_Main, QMainWindow):
         self.data.results['applications'] = chain.applications
 
     def open_start_menu(self):
-        """点 logo 弹出开始菜单：设置 / 最小化 / 退出程序，宽度与侧栏一致。"""
+        """点 logo 弹出开始菜单；菜单开着时再点一次就关掉。"""
         from ui.component.start_menu import StartMenu
+
+        current = getattr(self, '_start_menu', None)
+        if current is not None and current.isVisible():
+            current.close()
+            self._start_menu = None
+            return
 
         sidebar = self.sidebar_wg
         menu = StartMenu(
