@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QDialog, QMenu, QLabel,
     QPushButton,
 )
-from PySide6.QtCore import QEvent, QModelIndex, QTimer, Qt
+from PySide6.QtCore import QEvent, QModelIndex, QPoint, QTimer, Qt
 from PySide6.QtGui import QPixmap, QIcon
 from numpy import where
 
@@ -24,6 +24,7 @@ from ui.window.message_editor import wn_Message
 from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
+from ui.tokens import COLORS
 from ui.component.winutil import (
     force_foreground, foreground_covers_screen, is_shell_foreground,
 )
@@ -120,7 +121,7 @@ class Main(wn_Main, QMainWindow):
         self.applink_tv.customContextMenuRequested.connect(self._on_app_context_menu)
         self.random_pb.clicked.connect(self.openWn_random)
         self.message_tb.mouseDoubleClickEvent = self._on_message_double_click
-        self.icon_l.clicked.connect(self.open_settings)
+        self.icon_l.clicked.connect(self.open_start_menu)
 
         # 点表格空白处清除选中（Qt 默认不清，选中框会一直留着）
         self._clear_filter = ClickToClearFilter(self)
@@ -365,6 +366,30 @@ class Main(wn_Main, QMainWindow):
         chain.play(self)
         # open_app 读的是 self.data['applications']，需要同步
         self.data.results['applications'] = chain.applications
+
+    def open_start_menu(self):
+        """? logo ??????????? / ??? / ????????????"""
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            f'QMenu {{ background-color: {COLORS["primary"]}; color: white;'
+            '  border: none; padding: 6px 0px; }}'
+            'QMenu::item { padding: 10px 28px; font-size: 16pt; }'
+            'QMenu::item:selected { background-color: rgba(0, 0, 0, 0.25); }'
+        )
+        act_settings = menu.addAction('??')
+        act_settings.triggered.connect(self.open_settings)
+        act_min = menu.addAction('???')
+        act_min.triggered.connect(self.showMinimized)
+        act_quit = menu.addAction('????')
+        act_quit.triggered.connect(self.quit_app)
+
+        # ?????? logo ???????
+        anchor = self.icon_l.mapToGlobal(QPoint(self.icon_l.width(),
+                                                self.icon_l.rect().top()))
+        menu.adjustSize()
+        pos = QPoint(anchor.x() - menu.width() // 2,
+                     anchor.y() - menu.height() - 4)
+        menu.exec(pos)
 
     def open_settings(self):
         dlg = SettingsDialog(self)
