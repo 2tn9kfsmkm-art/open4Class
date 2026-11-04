@@ -368,28 +368,28 @@ class Main(wn_Main, QMainWindow):
         self.data.results['applications'] = chain.applications
 
     def open_start_menu(self):
-        """? logo ??????????? / ??? / ????????????"""
+        """点 logo 弹出开始菜单：设置 / 最小化 / 退出程序，宽度与侧栏一致。"""
+        sidebar = self.sidebar_wg
         menu = QMenu(self)
+        menu.setFixedWidth(sidebar.width())
         menu.setStyleSheet(
             f'QMenu {{ background-color: {COLORS["primary"]}; color: white;'
-            '  border: none; padding: 6px 0px; }}'
-            'QMenu::item { padding: 10px 28px; font-size: 16pt; }'
-            'QMenu::item:selected { background-color: rgba(0, 0, 0, 0.25); }'
+            '  border: none; padding: 4px 0px; }}'
+            'QMenu::item { padding: 14px 0px; font-size: 18pt; }'
+            'QMenu::item:selected { background-color: rgba(0, 0, 0, 0.28); }'
         )
-        act_settings = menu.addAction('??')
-        act_settings.triggered.connect(self.open_settings)
-        act_min = menu.addAction('???')
-        act_min.triggered.connect(self.showMinimized)
-        act_quit = menu.addAction('????')
-        act_quit.triggered.connect(self.quit_app)
+        for text, slot in (('设置', self.open_settings),
+                           ('最小化', self.showMinimized),
+                           ('退出程序', self.quit_app)):
+            action = menu.addAction(text)
+            action.triggered.connect(slot)
 
-        # ?????? logo ???????
-        anchor = self.icon_l.mapToGlobal(QPoint(self.icon_l.width(),
-                                                self.icon_l.rect().top()))
+        # 贴着 logo 顶边、与侧栏左边缘对齐，向上展开
+        top_left = sidebar.mapToGlobal(QPoint(0, sidebar.rect().top()))
+        logo_top = self.icon_l.mapToGlobal(QPoint(0, 0)).y()
         menu.adjustSize()
-        pos = QPoint(anchor.x() - menu.width() // 2,
-                     anchor.y() - menu.height() - 4)
-        menu.exec(pos)
+        menu.exec(QPoint(top_left.x(),
+                         logo_top - menu.height() - 6))
 
     def open_settings(self):
         dlg = SettingsDialog(self)
