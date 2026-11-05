@@ -126,27 +126,24 @@ class TopBar(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(155, 13, 20, 175))
-        painter.drawRoundedRect(self.rect(), 16, 16)
 
-        # 顶部进度条：当前这节课/这个课间还剩多少（红色不透明、无边框）
-        if self._progress > 0:
-            bar_w = int(self.width() * min(1.0, self._progress))
-            # 按顶条圆角裁剪，避免进度条自己的圆角在左上角露出来
-            clip = QPainterPath()
-            clip.addRoundedRect(QRectF(self.rect()), 16, 16)
-            painter.save()
-            painter.setClipPath(clip)
-            # 底槽：整条浅灰，表示"这一整段"
-            painter.setBrush(QColor(255, 255, 255, 70))
-            painter.drawRect(0, 0, self.width(), _PROGRESS_H)
-            # 已过部分：红色
-            painter.setBrush(QColor(230, 40, 45, 255))
-            painter.drawRect(0, 0, bar_w, _PROGRESS_H)
-            # 分界处一条浅色竖线
-            painter.setBrush(QColor(255, 255, 255, 220))
-            painter.drawRect(max(0, bar_w - 3), 0, 3, _PROGRESS_H)
-            painter.restore()
+        # 整条背景就是进度条：左边（已过）半透明红，右边（未过）半透明灰
+        clip = QPainterPath()
+        clip.addRoundedRect(QRectF(self.rect()), 16, 16)
+        painter.save()
+        painter.setClipPath(clip)
+
+        fraction = max(0.0, min(1.0, self._progress))
+        bar_w = int(self.width() * fraction)
+        painter.setBrush(QColor(150, 20, 26, 205))
+        painter.drawRect(0, 0, bar_w, self.height())
+        painter.setBrush(QColor(120, 120, 126, 190))
+        painter.drawRect(bar_w, 0, self.width() - bar_w, self.height())
+
+        if 0 < bar_w < self.width():
+            painter.setBrush(QColor(255, 255, 255, 170))
+            painter.drawRect(max(0, bar_w - 2), 0, 2, self.height())
+        painter.restore()
 
     def refresh(self, now, courses, countdowns, lesson_times=None):
         self.time_l.setText(now.strftime('%H:%M'))
