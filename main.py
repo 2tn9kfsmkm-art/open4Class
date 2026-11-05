@@ -86,12 +86,12 @@ def main():
         print('已经有一个班级管理系统在运行，已请它把窗口调出来。')
         return
 
-    # 高分屏下把全局字号降一档：4K@250% / 300% 时容器按像素排，字却跟着放大，
-    # 不降档就会挤掉内容。
+    # 只有超过 250% 才降字号：250%（教室常用）实测刚好，不需要缩。
+    # 300% 时降约 15%，避免容器装不下放大的字。
     from ui.tokens import set_font_scale
     screen = app.primaryScreen()
     dpi_scale = (screen.logicalDotsPerInch() / 96.0) if screen else 1.0
-    set_font_scale(1.0 - max(0.0, dpi_scale - 1.5) * 0.1)
+    set_font_scale(1.0 - max(0.0, dpi_scale - 2.5) * 0.3)
 
     setQss(QSS_DIR + 'mainpage.qss', app)
 
