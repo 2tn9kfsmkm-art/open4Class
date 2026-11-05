@@ -6,7 +6,7 @@ from functools import partial
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QMessageBox, QDialog, QMenu, QLabel,
-    QPushButton,
+    QHeaderView, QPushButton,
 )
 from PySide6.QtCore import QEvent, QModelIndex, QPoint, QTimer, Qt
 from PySide6.QtGui import QPixmap, QIcon
@@ -86,12 +86,22 @@ class Main(wn_Main, QMainWindow):
         # 免得出现纵向滚动条
         setQss(QSS_DIR + 'tableview.qss', self.classlist_tv,
                extra='QTableView::item { padding: 6px 5px; }')
+        # 课表列宽按内容：字体放大时不再被省略号截断
+        self.classlist_tv.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents)
         setQss(QSS_DIR + 'applink.qss', self.applink_tv)
         setQss(QSS_DIR + 'sidebar.qss', self.sidebar_wg)
 
         # Logo
         logo = QPixmap(RESOURCE_DIR + 'logo.png')
         self.icon_l.setPixmap(logo)
+
+        # 侧栏最小宽度跟着字体走：300% 缩放下 24pt 的日期需要更宽的栏
+        _fm = self.time_l.fontMetrics()
+        self.sidebar_wg.setMinimumWidth(max(
+            260,
+            max(_fm.horizontalAdvance('2026年'),
+                _fm.horizontalAdvance('周三')) + 60))
 
         # 倒计时
         self._countdown_labels = []

@@ -175,7 +175,10 @@ class TopBar(QWidget):
         geo = _primary_geometry()
         if geo is None:
             return
-        width = min(1700, int(geo.width() * 0.88))
+        # 宽度按内容算：留足三块文字 + 间距，再与屏幕宽度取小
+        layout = self.layout()
+        need = layout.sizeHint().width() + 24
+        width = min(geo.width() - 40, max(need, int(geo.width() * 0.55)))
         self.setFixedWidth(width)
         self.move(geo.left() + (geo.width() - width) // 2, geo.top() + 12)
 

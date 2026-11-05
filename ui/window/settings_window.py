@@ -924,7 +924,7 @@ class ExternalToolTab(QWidget):
         d.setAlignment(Qt.AlignCenter)
         layout.addWidget(d)
         btn = QPushButton(btn_text)
-        btn.setFixedWidth(220)
+        btn.setMinimumWidth(220)
         btn.clicked.connect(self.clicked)
         layout.addWidget(btn, alignment=Qt.AlignCenter)
         layout.addStretch(1)
@@ -1279,6 +1279,13 @@ class SettingsDialog(QDialog):
                 int(geo.width() * 0.85),
                 int(geo.height() * 0.85),
             )
+        else:
+            from PySide6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen else None
+        if avail is not None:
+            self.resize(min(int(avail.width() * 0.9), 1400),
+                        min(int(avail.height() * 0.88), 950))
         else:
             self.resize(880, 720)
 

@@ -392,6 +392,10 @@ class SchedulePage(_Page):
         top.addWidget(QLabel('星期'))
         self.day_cb = QComboBox()
         self.day_cb.addItems(CLASS_WEEKDAYS)
+        self.day_cb.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.day_cb.setMinimumWidth(self.day_cb.fontMetrics()
+                                    .horizontalAdvance('周一') * 2 + 60)
         self.day_cb.currentIndexChanged.connect(self._on_day_changed)
         top.addWidget(self.day_cb)
         self.copy_btn = QPushButton('把本日复制到其余四天')
@@ -763,6 +767,15 @@ class DonePage(_Page):
 # ============================================================
 # 向导窗口
 # ============================================================
+def _default_width() -> int:
+    """窗口宽度跟着屏幕走：大屏（含 4K 高缩放）也放得下内容。"""
+    from PySide6.QtGui import QGuiApplication
+
+    screen = QGuiApplication.primaryScreen()
+    available = screen.availableGeometry().width() if screen else 1200
+    return max(760, min(int(available * 0.92), 1500))
+
+
 class SetupWizard(QDialog):
     STEPS = ['欢迎', '班级信息', '学生名单', '课程表', '作息时间', '值日安排', '完成']
 
@@ -778,9 +791,9 @@ class SetupWizard(QDialog):
         self.setWindowTitle('首次使用设置')
         # 窗口尺寸只定一次，之后交给用户拖动：不在切模式/切页时改大小
         # （那样会在重绘时留下残影）。内容溢出由页面内的滚动区兜底。
-        self.setMinimumSize(760, 520)
+        self.setMinimumSize(max(760, int(_default_width() * 0.8)), 520)
         self._extra_height = 0
-        self.resize(PAGE_WIDTH, self._default_height())
+        self.resize(_default_width(), self._default_height())
 
         self._build_layout()
 
