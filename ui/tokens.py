@@ -54,12 +54,41 @@ FONTS = {
 }
 
 
+# 全局字号缩放：高分屏（4K@250%/300%）下按比例把字号降一档，
+# 否则固定像素的容器装不下放大的字。由 main.py 启动时设置。
+FONT_SCALE = 1.0
+
+
+def set_font_scale(scale: float) -> None:
+    global FONT_SCALE
+    FONT_SCALE = max(0.75, min(1.0, float(scale)))
+
+
+def current_font_scale() -> float:
+    return FONT_SCALE
+
+
+def _scaled_fonts() -> dict:
+    result = {}
+    for name, value in FONTS.items():
+        if value.endswith('pt'):
+            try:
+                pt = float(value[:-2]) * FONT_SCALE
+            except ValueError:
+                result[name] = value
+                continue
+            result[name] = f'{pt:.1f}pt'
+        else:
+            result[name] = value
+    return result
+
+
 def render(qss: str) -> str:
     """把 QSS 里的 @token 替换成实际值。
 
     未知的 @xxx 原样保留，方便发现拼错的名字。
     """
-    merged = {**COLORS, **FONTS}
+    merged = {**COLORS, **_scaled_fonts()}
     # 长的先替换：否则 @primary 会把 @primary-muted 变成 "#9B0D14-muted"
     for name in sorted(merged, key=len, reverse=True):
         qss = qss.replace('@' + name, merged[name])

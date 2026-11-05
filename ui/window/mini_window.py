@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.schedule import describe, lesson_state
-from ui.tokens import COLORS
+from ui.tokens import COLORS, current_font_scale
 
 _FLAGS = (
     Qt.WindowType.Tool
@@ -89,10 +89,11 @@ class TopBar(QWidget):
         layout.setSpacing(24)
 
         self._progress = 0.0        # 当前时段已过比例 0~1
-        self.time_l = self._label(26, COLORS['white'], bold=True)
-        self.course_l = self._label(18, COLORS['white'], bold=True)
-        self.next_l = self._label(12, '#F2DCDD')
-        self.info_l = self._label(12, '#F2DCDD')
+        _s = current_font_scale()
+        self.time_l = self._label(round(26 * _s), COLORS['white'], bold=True)
+        self.course_l = self._label(round(18 * _s), COLORS['white'], bold=True)
+        self.next_l = self._label(round(12 * _s), '#F2DCDD')
+        self.info_l = self._label(round(12 * _s), '#F2DCDD')
 
         self.time_l.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.time_l)
@@ -203,7 +204,7 @@ class EntryChip(QWidget):
         self.label = QLabel('班级')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         _f = QFont()
-        _f.setPointSize(14)
+        _f.setPointSize(max(9, round(14 * current_font_scale())))
         _f.setBold(True)
         self.label.setFont(_f)
         self.label.setStyleSheet(
