@@ -1274,16 +1274,7 @@ class SettingsDialog(QDialog):
         # 按屏幕尺寸自适应（原来固定 760x640 会溢出）
         screen = QApplication.primaryScreen()
         if screen is not None:
-            geo = screen.availableGeometry()
-            self.resize(
-                int(geo.width() * 0.85),
-                int(geo.height() * 0.85),
-            )
-        else:
-            from PySide6.QtGui import QGuiApplication
-        screen = QGuiApplication.primaryScreen()
-        avail = screen.availableGeometry() if screen else None
-        if avail is not None:
+            avail = screen.availableGeometry()
             self.resize(min(int(avail.width() * 0.9), 1400),
                         min(int(avail.height() * 0.88), 950))
         else:
