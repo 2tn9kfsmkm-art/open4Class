@@ -1,6 +1,0 @@
-﻿feat(悬浮条): 鼠标穿透，点击落到下面的窗口
-
-- TopBar 增加 WindowTransparentForInput 标志与 WA_TransparentForMouseEvents，
-  顶条只负责显示，不再挡住任何点击
-- 右下角「班级」小窗保持可点（不加穿透），仍能回主界面
-验证：顶条穿透 True，入口小窗可点 True。
