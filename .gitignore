@@ -35,3 +35,6 @@ messages/images/
 
 # 冒烟脚本输出
 .run-*.txt
+
+# macOS 资源文件
+._*
