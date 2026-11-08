@@ -226,7 +226,11 @@ class app_chain(Chain):
         super().__init__(parent, widget, name)
 
     def load(self):
-        self.applications = PandasQItemModel(data=shared_store().load_apps())
+        from services.default_apps import seed_default_apps
+
+        store = shared_store()
+        # 新机器 / 重置后没有应用链接时，写入随包默认的四个
+        self.applications = PandasQItemModel(data=seed_default_apps(store))
 
     def process(self):
         tmp_data = self.applications._df['软件链接'].to_list()

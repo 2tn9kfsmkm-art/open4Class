@@ -1,7 +1,8 @@
-﻿fix(设置): 课程页保存报错且无提示；去掉应用网格的「...」入口
+﻿feat(分发): 随包携带四个默认应用链接（U盘/WPS/希沃白板/浏览器）
 
-1. 课程 Tab 的 save() 用到 today / str_date，但设置窗口只从 config 导入了
-   FILE_DIR/ENCODING/wordday，一执行就 NameError，所以既没保存课表也没提示。
-   补上 today、str_date 导入。现在七个 Tab 逐个调用 save() 都显示「✓ 已保存」
-   （名单页为空时会先弹「名单不能为空」并停止，属预期）。
-2. 应用链接已在设置里管理，主界面网格不再追加「...」图标。
+- resources/default_apps.json：每项可写多个候选路径，占位符 %LOCALAPPDATA% 会展开
+- services/default_apps.py：启动时若数据库里没有应用链接，自动写入默认值
+  （按第一个真实存在的路径选择，换机器也能用）
+- app_chain.load() 接上 seed_default_apps()
+- 实测默认表：U盘 explorer、WPS、希沃白板、Edge；本机只有 Edge 存在，
+  其它会用第一个候选路径（到希沃机器上即可命中）

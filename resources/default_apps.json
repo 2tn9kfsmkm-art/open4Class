@@ -1,0 +1,33 @@
+[
+  {
+    "name": "U盘",
+    "path": "explorer",
+    "fallback": []
+  },
+  {
+    "name": "WPS",
+    "path": "",
+    "fallback": [
+      "C:\\Program Files\\Kingsoft\\WPS Office\\ksolaunch.exe",
+      "C:\\Program Files (x86)\\Kingsoft\\WPS Office\\ksolaunch.exe",
+      "%LOCALAPPDATA%\\Kingsoft\\WPS Office\\ksolaunch.exe",
+      "C:\\Users\\seewo\\AppData\\Local\\Kingsoft\\WPS Office\\ksolaunch.exe"
+    ]
+  },
+  {
+    "name": "希沃白板",
+    "path": "",
+    "fallback": [
+      "C:\\Program Files (x86)\\Seewo\\EasiNote5\\swenlauncher\\swenlauncher.exe",
+      "C:\\Program Files\\Seewo\\EasiNote5\\swenlauncher\\swenlauncher.exe"
+    ]
+  },
+  {
+    "name": "浏览器",
+    "path": "",
+    "fallback": [
+      "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+    ]
+  }
+]
