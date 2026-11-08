@@ -32,6 +32,7 @@ from ondutySpawn import (
     write_sample_name_csv, write_sample_group_csv, open_file_external,
 )
 from services.imports import read_table, write_template
+from ui.component.touch import enable_touch_scroll
 from tools.SettingsWidgetBase import SettingsWidgetBase
 
 
@@ -1380,6 +1381,7 @@ class SettingsDialog(QDialog):
         sa.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         sa.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         sa.setWidget(widget)
+        enable_touch_scroll(sa)
         if min_width:
             sa.setMinimumWidth(min_width)
         return sa

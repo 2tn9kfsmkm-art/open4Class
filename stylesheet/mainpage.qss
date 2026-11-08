@@ -105,15 +105,15 @@ QMenu::item:selected {
 QScrollBar:vertical {
     border: none;
     background-color: @neutral-150;
-    width: 12px;
+    width: 20px;              /* 触摸目标：手指按得住 */
     margin: 0px;
-    border-radius: 6px;
+    border-radius: 10px;
 }
 
 QScrollBar::handle:vertical {
     background-color: @scrollbar;  /* 滚动条手柄颜色 */
-    border-radius: 6px;
-    min-height: 30px;
+    border-radius: 8px;
+    min-height: 44px;         /* 触摸目标通行建议 */
 }
 
 QScrollBar::handle:vertical:hover {
@@ -126,15 +126,15 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 QScrollBar:horizontal {
     border: none;
     background-color: @neutral-150;
-    width: 12px;
+    height: 20px;
     margin: 0px;
-    border-radius: 6px;
+    border-radius: 10px;
 }
 
 QScrollBar::handle:horizontal {
     background-color: @scrollbar;  /* 滚动条手柄颜色 */
-    border-radius: 6px;
-    min-height: 30px;
+    border-radius: 8px;
+    min-width: 44px;
 }
 
 QScrollBar::handle:horizontal:hover {

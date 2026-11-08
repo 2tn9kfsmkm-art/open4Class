@@ -1,7 +1,7 @@
-﻿fix(置前): 从悬浮层回主界面时没有最大化（300% 缩放更明显）
+﻿feat(B1): 触屏滚动支持——QScroller 手势 + 加宽滚动条
 
-force_foreground 里先 showMaximized()，随后又调用 ShowWindow(SW_RESTORE)。
-SW_RESTORE 的语义是「还原成普通大小」，于是刚最大化又被还原 —— 缩放越大，
-还原后的窗口相对屏幕越显小，所以 300% 下特别明显。
-改为按需要传 maximize 参数：需要最大化时用 SW_MAXIMIZE(3)，否则才用 SW_RESTORE(9)；
-主窗口的「返回主界面」按最小化前是否最大化来决定。
+- 新增 ui/component/touch.py：enable_touch_scroll() 用 LeftMouseButtonGesture 抓取手势，
+  手指可直接拖动内容；鼠标拖动不受影响
+- 接入：主界面三张表、设置窗口每个 Tab 的滚动区、向导每一页
+- QSS：滚动条 12px -> 20px，滑块最小 44px（触摸目标建议）；横向同理
+验证：向导/设置的 scroll 对象都有 scroller；样式表里 width:20px、min-height:44px 生效

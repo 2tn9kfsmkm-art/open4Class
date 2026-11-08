@@ -1,4 +1,3 @@
-from PySide6.QtCore import QTime
 """首次使用向导。
 
 约定：**向导只收集表单，落盘全部交给 bootstrap.save_all**。
@@ -7,6 +6,8 @@ from PySide6.QtCore import QTime
 对外入口：
     SetupWizard.run()       首次启动时调用，返回是否完成
 """
+
+from PySide6.QtCore import QTime
 
 from pandas import DataFrame, read_csv
 from PySide6.QtCore import QDate, Qt
@@ -39,6 +40,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ui.component.schedule_editor import ScheduleEditor
 import bootstrap
 from config import CLASS_WEEKDAYS, DEFAULT_CLASS_ROWS, load_user_settings
 from ondutySpawn import (
@@ -80,6 +82,7 @@ class _Page(QWidget):
         root.addSpacing(14)
 
         # 内容放进滚动区：窗口由用户自由拖动缩放，内容多了就滚动，不挤压控件
+        from ui.component.touch import enable_touch_scroll
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
@@ -91,6 +94,7 @@ class _Page(QWidget):
         self.body.setContentsMargins(0, 0, 0, 0)
         self.body.setSpacing(10)
         self.scroll.setWidget(self.content)
+        enable_touch_scroll(self.scroll)
         root.addWidget(self.scroll, 1)
 
         self._build()
@@ -376,8 +380,7 @@ class SchedulePage(_Page):
 
     def __init__(self, wizard):
         super().__init__(wizard)
-        from ui.component.schedule_editor import ScheduleEditor
-
+        
         self.editor = ScheduleEditor(rows=DEFAULT_CLASS_ROWS)
         self.body.addWidget(self.editor, 1)
 

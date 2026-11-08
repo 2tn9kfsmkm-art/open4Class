@@ -25,6 +25,7 @@ from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
 from ui.tokens import COLORS
+from ui.component.touch import enable_touch_scroll
 from ui.component.winutil import (
     force_foreground, foreground_covers_screen, is_shell_foreground,
 )
@@ -129,6 +130,9 @@ class Main(wn_Main, QMainWindow):
             _tv.viewport().installEventFilter(self._clear_filter)
 
         # 数据加载
+        for _tv in (self.classlist_tv, self.onduty_tv, self.applink_tv):
+            enable_touch_scroll(_tv)
+
         self.data = loadPool(parent=self, widget=self)
 
         # 系统托盘（希沃上可能不可用，可用才建）
