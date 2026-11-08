@@ -177,8 +177,8 @@ class Main(wn_Main, QMainWindow):
             2. 主窗口最小化 → 显示
             3. 前台是本程序的主窗口 → 收起
             4. 前台是本程序的悬浮层自己 → 保持显示（否则会自己闪）
-            5. 别的程序铺满屏幕（最大化/全屏）→ 显示
-            6. 其它情况 → 收起
+            5. 没显示时，别的程序铺满屏幕（最大化/全屏）→ 显示
+            6. 其它情况 → 保持现状（已经显示就不收）
         """
         import time
 
@@ -204,13 +204,11 @@ class Main(wn_Main, QMainWindow):
                 mini.show_all()
             return
 
-        if not is_shell_foreground() and foreground_covers_screen():
-            if not mini.is_visible():
-                mini.show_all()
-            return
-
-        if mini.is_visible():
-            mini.hide_all()
+        # 已经显示的情况下，只要不是回到主窗口就一直留着：
+        # 前面开个小窗口、点开始菜单都不该把它弄没。
+        if not mini.is_visible() and not is_shell_foreground() \
+                and foreground_covers_screen():
+            mini.show_all()
 
     # ---------- 悬浮窗数据 ----------
     def _today_lesson_times(self):
