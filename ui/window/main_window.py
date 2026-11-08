@@ -554,6 +554,14 @@ class Main(wn_Main, QMainWindow):
             self.data.load(self.data.app_chain)
             wait_all(self.data)
 
+    def refresh_apps(self):
+        """设置里改完应用链接后，刷新主界面的图标网格。"""
+        try:
+            self.data.load(self.data.app_chain)
+            wait_all(self.data)
+        except Exception as e:                  # noqa: BLE001
+            print(f'[apps] 刷新失败: {e!r}')
+
     def openWn_Message(self):
         self.wn_Message = wn_Message(self)
         self.wn_Message.exec()

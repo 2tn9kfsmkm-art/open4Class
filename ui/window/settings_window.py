@@ -1176,6 +1176,118 @@ class GeneralWidget(SettingsWidgetBase):
 # ============================================================
 # Tab 7：倒计时编辑
 # ============================================================
+class AppLinkWidget(SettingsWidgetBase):
+    """应用链接：直接在这里增删改，保存后主界面图标刷新。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel('主界面右下角显示的应用图标；名称可用中文，'
+                                '路径支持 .exe / .lnk / 文件夹。'))
+
+        self.table = QTableWidget(0, 2)
+        self.table.setHorizontalHeaderLabels(['名称', '路径'])
+        self.table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows)
+        layout.addWidget(self.table, 1)
+
+        btn_row = QHBoxLayout()
+        self.add_btn = QPushButton('添加应用…')
+        self.add_btn.clicked.connect(self._on_add)
+        self.del_btn = QPushButton('删除选中')
+        self.del_btn.clicked.connect(self._on_delete)
+        self.up_btn = QPushButton('上移')
+        self.up_btn.clicked.connect(lambda: self._move(-1))
+        self.down_btn = QPushButton('下移')
+        self.down_btn.clicked.connect(lambda: self._move(1))
+        for b in (self.add_btn, self.del_btn, self.up_btn, self.down_btn):
+            b.setMinimumHeight(36)
+            btn_row.addWidget(b)
+        btn_row.addStretch(1)
+        self.save_btn = QPushButton('保存')
+        self.save_btn.setMinimumHeight(36)
+        self.save_btn.clicked.connect(self.save)
+        btn_row.addWidget(self.save_btn)
+        layout.addLayout(btn_row)
+
+        self._load()
+
+    # ---------- 数据 ----------
+    def _load(self):
+        try:
+            df = shared_store().load_apps()
+        except Exception as e:                  # noqa: BLE001
+            print(f'[apps] 读取失败: {e!r}')
+            return
+        self.table.setRowCount(0)
+        for _, row in df.iterrows():
+            self._append_row(str(row.iloc[0]), str(row.iloc[1]))
+
+    def _append_row(self, name: str, path: str):
+        r = self.table.rowCount()
+        self.table.insertRow(r)
+        self.table.setItem(r, 0, QTableWidgetItem(name))
+        self.table.setItem(r, 1, QTableWidgetItem(path))
+
+    def _on_add(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, '选择应用', '', '程序 (*.exe *.lnk *.bat);;所有文件 (*)')
+        if not paths:
+            return
+        for path in paths:
+            name = os.path.splitext(os.path.basename(path))[0]
+            self._append_row(name, path)
+
+    def _on_delete(self):
+        rows = sorted({i.row() for i in self.table.selectedIndexes()},
+                      reverse=True)
+        for r in rows:
+            self.table.removeRow(r)
+
+    def _move(self, delta: int):
+        rows = sorted({i.row() for i in self.table.selectedIndexes()})
+        if len(rows) != 1:
+            return
+        r = rows[0]
+        target = r + delta
+        if not (0 <= target < self.table.rowCount()):
+            return
+        values = [self.table.item(r, c).text() if self.table.item(r, c) else ''
+                  for c in range(2)]
+        self.table.removeRow(r)
+        self.table.insertRow(target)
+        for c, v in enumerate(values):
+            self.table.setItem(target, c, QTableWidgetItem(v))
+        self.table.selectRow(target)
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        rows = []
+        for r in range(self.table.rowCount()):
+            name = self.table.item(r, 0).text().strip() if self.table.item(r, 0) else ''
+            path = self.table.item(r, 1).text().strip() if self.table.item(r, 1) else ''
+            if name and path:
+                rows.append((name, path))
+
+        from pandas import DataFrame
+        from data.store import APPS_COLUMNS
+
+        shared_store().save_apps(DataFrame(rows, columns=APPS_COLUMNS))
+        self.changed.emit()
+
+        parent = self.parent()
+        win = parent.parent() if parent is not None else None
+        if win is not None and hasattr(win, 'refresh_apps'):
+            win.refresh_apps()
+
+
 class ScheduleWidget(SettingsWidgetBase):
     """作息时间：五个工作日各自可调，与向导共用 ScheduleEditor。"""
 
@@ -1350,11 +1462,9 @@ class SettingsDialog(QDialog):
 
         self.tabs.addTab(self._wrap_scroll(self.countdown_widget), '倒计时')
 
-        self.app_tab = ExternalToolTab(
-            '应用链接管理', '通过独立对话框管理（保存后主页图标会自动刷新）',
-            '打开应用链接管理...', parent=self)
-        self.app_tab.clicked.connect(self._open_addapp)
-        self.tabs.addTab(self._wrap_scroll(self.app_tab), '应用链接')
+        self.app_widget = AppLinkWidget(self)
+        self.app_widget.changed.connect(lambda: self._dirty.add('apps'))
+        self.tabs.addTab(self._wrap_scroll(self.app_widget), '应用链接')
 
         self.message_tab = ExternalToolTab(
             '消息管理', '通过独立对话框管理（保存后主页消息会自动刷新）',
