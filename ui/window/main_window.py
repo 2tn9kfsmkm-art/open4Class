@@ -170,34 +170,45 @@ class Main(wn_Main, QMainWindow):
 
     # ---------- 悬浮层显示策略 ----------
     def _poll_mini(self):
-        """只跟着"最小化"走：不在前台但窗口还在时，不弹悬浮层。
+        """决定悬浮层是否显示。
 
-        之前按"失去前台"就弹，结果打开开始菜单、托盘、别的软件都会冒出来，
-        反而挡视线。现在只有最小化（或点 × 收进悬浮层）才显示。
+        规则（按优先级）：
+            1. 拖小窗 / 刚拖完 → 不动
+            2. 主窗口最小化 → 显示
+            3. 前台是本程序的主窗口 → 收起
+            4. 前台是本程序的悬浮层自己 → 保持显示（否则会自己闪）
+            5. 别的程序铺满屏幕（最大化/全屏）→ 显示
+            6. 其它情况 → 收起
         """
+        import time
+
         mini = getattr(self, 'mini', None)
         if mini is None:
             return
         if getattr(mini.chip, '_dragging', False) or mini.is_holding():
-            return                       # 拖动中/刚拖完，别去动它（会闪、会卡住）
-        app = QApplication.instance()
-        app_active = (app is not None
-                      and app.applicationState() == Qt.ApplicationState.ApplicationActive)
+            return
 
         if self.isMinimized():
             if not mini.is_visible():
                 mini.show_all()
             return
-        if app_active:
+
+        active = QApplication.activeWindow()
+        if active is self:
             if mini.is_visible():
                 mini.hide_all()
             return
-        # 别的软件最大化/全屏时浮出来（放 PPT、全屏浏览都能瞄一眼课表）；
-        # 普通大小的窗口不打扰
+        if active is mini.bar or active is mini.chip:
+            # 用户正在操作悬浮层本身，别收
+            if not mini.is_visible():
+                mini.show_all()
+            return
+
         if not is_shell_foreground() and foreground_covers_screen():
             if not mini.is_visible():
                 mini.show_all()
             return
+
         if mini.is_visible():
             mini.hide_all()
 
