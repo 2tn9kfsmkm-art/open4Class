@@ -1,7 +1,7 @@
-﻿feat(设置): 应用链接改到设置窗口内管理，不再弹独立对话框
+﻿fix(设置): 应用链接保存后立即生效；所有保存都提示「已保存」
 
-- 新增 AppLinkWidget：表格显示名称/路径，支持添加（多选 exe/lnk/所有文件）、
-  删除选中、上移/下移排序、保存
-- 保存写回 store.save_apps，并调用主窗口 refresh_apps() 立即刷新图标网格
-- 设置里的「应用链接」Tab 由 ExternalToolTab 换成这个控件
-验证：添加两行、上移后保存，重新读取顺序为 [白板, 浏览器]
+1. 之前取主窗口用的是 parent().parent()，但控件被包进 QScrollArea，
+   父链变成 viewport -> QScrollArea -> SettingsDialog -> Main，于是找不到
+   refresh_apps，主界面不刷新，只能重启。改为沿父链逐级查找。
+2. 新增 notify_saved() / SettingsDialog.show_saved()：底部显示 ✓ 已保存，
+   2 秒后自动消失；七个 Tab 的 save() 全部接上。

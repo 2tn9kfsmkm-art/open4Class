@@ -406,6 +406,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
             self, '完成',
             f'{summary}\n已生成 {df.shape[1]} 天值日表')
         self.changed.emit()
+        notify_saved(self)
 
     # ---------- 文件打开 / 编辑器 ----------
     def _open_onduty_csv(self):
@@ -439,6 +440,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
             QMessageBox.warning(self, '打开失败', f'{e!r}')
             return
         self.changed.emit()
+        notify_saved(self)
 
     # ---------- 配置 ----------
     def reset(self):
@@ -468,6 +470,7 @@ class OndutySpawnWidget(SettingsWidgetBase):
         cfg['onduty_daily_template'] = tpl
         save_user_settings(cfg)
         self.changed.emit()
+        notify_saved(self)
 
 
 
@@ -574,6 +577,7 @@ class StudentListWidget(SettingsWidgetBase):
                 '名单已保存。\n已有的值日表仍按旧名单轮值，'
                 '如需重新生成，请到「值日生生成」Tab。')
         self.changed.emit()
+        notify_saved(self)
 
 class CourseComboBoxDelegate(QComboBoxDelegate):
     """课程单元格编辑器：可下拉选，也可直接输入非选项。"""
@@ -894,6 +898,7 @@ class CourseEditorWidget(SettingsWidgetBase):
                     today.date(), [str(v) for v in df[wordday].tolist()])
 
         self.changed.emit()
+        notify_saved(self)
 
     def _on_add_course(self):
             it = QListWidgetItem('新课程')
@@ -1170,12 +1175,25 @@ class GeneralWidget(SettingsWidgetBase):
         cfg['school_name'] = self.school_le.text().strip()
         save_user_settings(cfg)
         self.changed.emit()
+        notify_saved(self)
 
 
 
 # ============================================================
 # Tab 7：倒计时编辑
 # ============================================================
+def notify_saved(widget, text: str = '已保存'):
+    """沿父链找到设置窗口，在底部闪一条「已保存」。"""
+    node = widget
+    for _ in range(8):
+        if node is None:
+            break
+        if hasattr(node, 'show_saved'):
+            node.show_saved(text)
+            return
+        node = node.parent()
+
+
 class AppLinkWidget(SettingsWidgetBase):
     """应用链接：直接在这里增删改，保存后主界面图标刷新。"""
 
@@ -1281,11 +1299,16 @@ class AppLinkWidget(SettingsWidgetBase):
 
         shared_store().save_apps(DataFrame(rows, columns=APPS_COLUMNS))
         self.changed.emit()
+        notify_saved(self)
 
-        parent = self.parent()
-        win = parent.parent() if parent is not None else None
-        if win is not None and hasattr(win, 'refresh_apps'):
-            win.refresh_apps()
+        node = self
+        for _ in range(8):
+            node = node.parent() if node is not None else None
+            if node is None:
+                break
+            if hasattr(node, 'refresh_apps'):
+                node.refresh_apps()
+                break
 
 
 class ScheduleWidget(SettingsWidgetBase):
@@ -1326,6 +1349,7 @@ class ScheduleWidget(SettingsWidgetBase):
     def save(self):
         shared_store().save_lesson_times(self.editor.collect())
         self.changed.emit()
+        notify_saved(self)
 
 
 class CountdownWidget(SettingsWidgetBase):
@@ -1411,6 +1435,7 @@ class CountdownWidget(SettingsWidgetBase):
         cfg['countdowns'] = items
         save_user_settings(cfg)
         self.changed.emit()
+        notify_saved(self)
 
 
 
@@ -1477,11 +1502,21 @@ class SettingsDialog(QDialog):
         self.tabs.addTab(self._wrap_scroll(self.general_widget), '通用')
 
         bottom = QHBoxLayout()
+        self.saved_l = QLabel('')
+        self.saved_l.setStyleSheet('color: @primary; font-size: 12pt;')
+        bottom.addWidget(self.saved_l)
         bottom.addStretch(1)
         self.close_btn = QPushButton('关闭')
         self.close_btn.clicked.connect(self.accept)
         bottom.addWidget(self.close_btn)
         layout.addLayout(bottom)
+
+    def show_saved(self, text: str = '已保存'):
+        """底部闪一条提示，2 秒后自动消失。"""
+        from PySide6.QtCore import QTimer
+
+        self.saved_l.setText(f'✓ {text}')
+        QTimer.singleShot(2000, lambda: self.saved_l.setText(''))
 
     def _wrap_scroll(self, widget, min_width=0):
         """把任意 QWidget 包成带滚动条的 Tab 内容。"""
