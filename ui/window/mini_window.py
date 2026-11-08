@@ -196,6 +196,7 @@ class EntryChip(QWidget):
         self._drag_offset = None
         self._dragged = False
         self._user_moved = False
+        self._dragging = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -227,6 +228,7 @@ class EntryChip(QWidget):
             self._drag_offset = (event.globalPosition().toPoint()
                                  - self.frameGeometry().topLeft())
             self._dragged = False
+            self._dragging = True
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -245,6 +247,7 @@ class EntryChip(QWidget):
             if not self._dragged:
                 self.clicked.emit()
             self._drag_offset = None
+            self._dragging = False
         super().mouseReleaseEvent(event)
 
     def place(self):
@@ -278,6 +281,9 @@ class MiniController:
     # ---- 显示 / 隐藏 ----
     def show_all(self):
         self.refresh()
+        if self.bar.isVisible() and self.chip.isVisible():
+            self._timer.start()          # 已经显示，别重复摆放/显示
+            return
         self.bar.place()
         self.chip.place()
         self.bar.show()

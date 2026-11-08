@@ -178,6 +178,8 @@ class Main(wn_Main, QMainWindow):
         mini = getattr(self, 'mini', None)
         if mini is None:
             return
+        if getattr(mini.chip, '_dragging', False):
+            return                       # 正在拖小窗，别去动它（会闪、会卡住）
         app = QApplication.instance()
         app_active = (app is not None
                       and app.applicationState() == Qt.ApplicationState.ApplicationActive)
