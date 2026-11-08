@@ -248,6 +248,9 @@ class EntryChip(QWidget):
                 self.clicked.emit()
             self._drag_offset = None
             self._dragging = False
+            cb = getattr(self, 'on_drag_end', None)
+            if callable(cb):
+                cb()
         super().mouseReleaseEvent(event)
 
     def place(self):
@@ -273,6 +276,8 @@ class MiniController:
         self.bar = TopBar()
         self.chip = EntryChip()
         self.chip.clicked.connect(self._back)
+        self._hold_until = 0.0
+        self.chip.on_drag_end = self._start_hold
 
         self._timer = QTimer(self.bar)
         self._timer.setInterval(500)
@@ -299,6 +304,15 @@ class MiniController:
 
     def is_visible(self):
         return self.bar.isVisible() or self.chip.isVisible()
+
+    def _start_hold(self, seconds: float = 1.2):
+        """拖动刚结束的一小段时间内不隐藏：拖完点一下会误触发激活，导致闪。"""
+        import time
+        self._hold_until = time.monotonic() + seconds
+
+    def is_holding(self) -> bool:
+        import time
+        return time.monotonic() < getattr(self, '_hold_until', 0.0)
 
     # ---- 刷新 ----
     def refresh(self):
