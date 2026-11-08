@@ -240,7 +240,7 @@ class Main(wn_Main, QMainWindow):
             self.showMaximized()
         else:
             self.showNormal()
-        force_foreground(self)
+        force_foreground(self, maximize=getattr(self, '_was_maximized', True))
 
     # ---------- 最小化 / 恢复 ----------
     def changeEvent(self, event):

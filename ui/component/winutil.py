@@ -5,7 +5,7 @@ Qt 的 raise_()/activateWindow() 在部分环境下不会真的把窗口顶到�
 """
 
 
-def force_foreground(win) -> None:
+def force_foreground(win, maximize: bool = True) -> None:
     """把窗口恢复并尽量提为前台。"""
     if win is None:
         return
@@ -14,7 +14,7 @@ def force_foreground(win) -> None:
 
     if win.isMinimized():
         win.showNormal()
-    if not win.isMaximized():
+    if maximize:
         win.showMaximized()
 
     win.raise_()
@@ -25,7 +25,8 @@ def force_foreground(win) -> None:
         import ctypes
         user32 = ctypes.windll.user32
         hwnd = int(win.winId())
-        user32.ShowWindow(hwnd, 9)              # SW_RESTORE
+        # SW_RESTORE(9) 会把最大化的窗口还原成普通大小，这里按需要选常量
+        user32.ShowWindow(hwnd, 3 if maximize else 9)   # SW_MAXIMIZE / SW_RESTORE
         user32.SetForegroundWindow(hwnd)
         user32.BringWindowToTop(hwnd)
         if user32.GetForegroundWindow() == hwnd:
