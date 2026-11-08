@@ -175,6 +175,11 @@ class classlist_chain(Chain):
         if classday is not None:
             classday = int(classday) - 1
             class_wordday = weekday2word(classday)
+            try:
+                from config import set_today_weekday
+                set_today_weekday(classday + 1)     # 今天按这天作息
+            except Exception:                       # noqa: BLE001
+                pass
             template = self.classlist_model._df
             if class_wordday not in template.columns:
                 print(f'[classlist] 周模板里没有 "{class_wordday}"，今日课表留空')

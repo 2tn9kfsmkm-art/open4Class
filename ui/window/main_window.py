@@ -203,15 +203,17 @@ class Main(wn_Main, QMainWindow):
     def _today_lesson_times(self):
         """优先用数据库里的作息（按星期），没有再退回 settings 里的旧配置。"""
         from core.schedule import times_for_weekday
+        from config import get_today_weekday
+
+        weekday = get_today_weekday() or datetime.now().isoweekday()
         try:
             raw = shared_store().load_lesson_times()
-            weekday = datetime.now().isoweekday()
             if raw:
                 return times_for_weekday(raw, weekday)
         except Exception:                       # noqa: BLE001
             pass
         return times_for_weekday(
-            load_user_settings().get('lesson_times'), datetime.now().isoweekday())
+            load_user_settings().get('lesson_times'), weekday)
 
     def _today_courses(self) -> list:
         try:

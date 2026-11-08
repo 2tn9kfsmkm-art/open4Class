@@ -197,3 +197,31 @@ def get_onduty_jobs() -> list:
 
 def get_onduty_daily_template() -> list:
     return load_user_settings()['onduty_daily_template']
+
+
+def set_today_weekday(weekday: int) -> None:
+    """记住"今天按星期几上课"（周末补课时选的那一天）。"""
+    import datetime as _dt
+
+    cfg = load_user_settings()
+    cfg['today_weekday'] = {
+        'date': _dt.date.today().strftime('%Y-%m-%d'),
+        'weekday': int(weekday),
+    }
+    save_user_settings(cfg)
+
+
+def get_today_weekday():
+    """今天被指定成星期几（1=周一）；没指定返回 None。"""
+    import datetime as _dt
+
+    raw = load_user_settings().get('today_weekday')
+    if not isinstance(raw, dict):
+        return None
+    if str(raw.get('date', '')) != _dt.date.today().strftime('%Y-%m-%d'):
+        return None
+    try:
+        weekday = int(raw.get('weekday'))
+    except (TypeError, ValueError):
+        return None
+    return weekday if 1 <= weekday <= 7 else None

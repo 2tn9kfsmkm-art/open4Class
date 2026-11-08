@@ -368,143 +368,28 @@ class ClasslistPage(_Page):
 # ⑤ 值日安排
 # ============================================================
 class SchedulePage(_Page):
-    """作息时间：一个小表，用表头的星期下拉切换周一~周五。"""
+    """作息时间：与课程表共用 ScheduleEditor，节数跟着课表走。"""
 
     title = "作息时间"
-    subtitle = ("表头选星期，同一张表里分别选时、分（精确到 1 分钟）。"
-                "五天可以不一样。")
+    subtitle = ("表头选星期，分别选时、分（精确到 1 分钟）。\n"
+                "节数默认与上一页的课程表一致，可再增减。")
 
     def __init__(self, wizard):
         super().__init__(wizard)
-        self._loading = False
+        from ui.component.schedule_editor import ScheduleEditor
 
-        from core.schedule import DEFAULT_LESSON_TIMES
-        base = []
-        for start, end in DEFAULT_LESSON_TIMES:
-            sh, sm = (int(x) for x in start.split(':'))
-            eh, em = (int(x) for x in end.split(':'))
-            base.append((sh, sm, eh, em))
-        self._days = {d: list(base) for d in range(1, 6)}
-        self._current = 1
+        self.editor = ScheduleEditor(rows=DEFAULT_CLASS_ROWS)
+        self.body.addWidget(self.editor, 1)
 
-        lay = self.body
-        top = QHBoxLayout()
-        top.addWidget(QLabel('星期'))
-        self.day_cb = QComboBox()
-        self.day_cb.addItems(CLASS_WEEKDAYS)
-        self.day_cb.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToContents)
-        self.day_cb.setMinimumWidth(self.day_cb.fontMetrics()
-                                    .horizontalAdvance('周一') * 2 + 60)
-        self.day_cb.currentIndexChanged.connect(self._on_day_changed)
-        top.addWidget(self.day_cb)
-        self.copy_btn = QPushButton('把本日复制到其余四天')
-        self.copy_btn.clicked.connect(self._copy_all)
-        top.addWidget(self.copy_btn)
-        top.addStretch(1)
-        lay.addLayout(top)
+    # 与课表节数同步
+    def set_row_count(self, count: int):
+        self.editor.set_row_count(count)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(
-            ['开始 时', '开始 分', '结束 时', '结束 分'])
-        self.table.verticalHeader().setDefaultSectionSize(38)
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch)
-        self.table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
-        lay.addWidget(self.table, 1)
-
-        row = QHBoxLayout()
-        self.add_btn = QPushButton('加一节')
-        self.add_btn.clicked.connect(self._add_row)
-        self.del_btn = QPushButton('删末节')
-        self.del_btn.clicked.connect(self._del_last)
-        for b in (self.add_btn, self.del_btn):
-            b.setMinimumHeight(36)
-            row.addWidget(b)
-        row.addStretch(1)
-        lay.addLayout(row)
-
-        self._render()
-
-    # ---------- 表格 ----------
-    @staticmethod
-    def _combo(values, current):
-        cb = QComboBox()
-        cb.addItems([f'{v:02d}' for v in values])
-        cb.setCurrentText(f'{current:02d}')
-        cb.setMinimumHeight(32)
-        return cb
-
-    def _render(self):
-        rows = self._days[self._current]
-        self._loading = True
-        self.table.setRowCount(len(rows))
-        for r, (sh, sm, eh, em) in enumerate(rows):
-            self.table.setCellWidget(r, 0, self._combo(range(0, 24), sh))
-            self.table.setCellWidget(r, 1, self._combo(range(0, 60), sm))
-            self.table.setCellWidget(r, 2, self._combo(range(0, 24), eh))
-            self.table.setCellWidget(r, 3, self._combo(range(0, 60), em))
-        self.table.setMinimumHeight(38 * len(rows) + 44)
-        self._loading = False
-
-    def _save_current(self):
-        if self._loading:
-            return
-        rows = []
-        for r in range(self.table.rowCount()):
-            cbs = [self.table.cellWidget(r, c) for c in range(4)]
-            if any(cb is None for cb in cbs):
-                continue
-            rows.append(tuple(int(cb.currentText()) for cb in cbs))
-        self._days[self._current] = rows
-
-    def _on_day_changed(self, index):
-        self._save_current()
-        self._current = index + 1
-        self._render()
-
-    def _copy_all(self):
-        self._save_current()
-        rows = list(self._days[self._current])
-        for d in range(1, 6):
-            if d != self._current:
-                self._days[d] = list(rows)
-
-    def _add_row(self):
-        self._save_current()
-        self._days[self._current].append((7, 40, 8, 20))
-        self._render()
-
-    def _del_last(self):
-        self._save_current()
-        if len(self._days[self._current]) > 1:
-            self._days[self._current].pop()
-            self._render()
-
-    # ---------- 对外 ----------
     def set_times(self, mapping: dict):
-        if not mapping:
-            return
-        for weekday in range(1, 6):
-            slots = mapping.get(weekday) or mapping.get(str(weekday))
-            if not slots:
-                continue
-            rows = []
-            for start, end in slots:
-                sh, sm = (int(x) for x in str(start).split(':'))
-                eh, em = (int(x) for x in str(end).split(':'))
-                rows.append((sh, sm, eh, em))
-            self._days[weekday] = rows
-        self._render()
+        self.editor.set_times(mapping)
 
     def collect(self) -> dict:
-        self._save_current()
-        result = {}
-        for weekday, rows in self._days.items():
-            if rows:
-                result[weekday] = [(f'{sh:02d}:{sm:02d}', f'{eh:02d}:{em:02d}')
-                                   for sh, sm, eh, em in rows]
-        return result
+        return self.editor.collect()
 
 
 class OndutyPage(_Page):
@@ -953,6 +838,14 @@ class SetupWizard(QDialog):
         payload = page.collect()
         if payload:
             self.data.update(payload)
+
+        # 从课程表进作息页时，把节数对齐（课表几节，作息就几节）
+        if self.current == 3:
+            try:
+                rows = self.pages[3].table.rowCount()
+                self.pages[4].set_row_count(rows)
+            except Exception:                   # noqa: BLE001
+                pass
 
         if self.current == len(self.pages) - 1:
             self._finish()

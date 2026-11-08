@@ -1175,6 +1175,46 @@ class GeneralWidget(SettingsWidgetBase):
 # ============================================================
 # Tab 7：倒计时编辑
 # ============================================================
+class ScheduleWidget(SettingsWidgetBase):
+    """作息时间：五个工作日各自可调，与向导共用 ScheduleEditor。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        from ui.component.schedule_editor import ScheduleEditor
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel('每节课的起止时间；表头切换星期，五天可不同。'))
+        self.editor = ScheduleEditor()
+        layout.addWidget(self.editor, 1)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        self.save_btn = QPushButton('保存')
+        self.save_btn.setMinimumHeight(36)
+        self.save_btn.clicked.connect(self.save)
+        btn_row.addWidget(self.save_btn)
+        layout.addLayout(btn_row)
+        self._load()
+
+    def _load(self):
+        try:
+            store = shared_store()
+            self.editor.set_times(store.load_lesson_times())
+            # 节数跟课程表对齐
+            rows = len(store.load_classlist())
+            if rows > 0:
+                self.editor.set_row_count(rows)
+        except Exception as e:                  # noqa: BLE001
+            print(f'[settings] 读取作息失败: {e!r}')
+
+    def reset(self):
+        self._load()
+
+    def save(self):
+        shared_store().save_lesson_times(self.editor.collect())
+        self.changed.emit()
+
+
 class CountdownWidget(SettingsWidgetBase):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1303,6 +1343,10 @@ class SettingsDialog(QDialog):
         self.countdown_widget = CountdownWidget(self)
         self.countdown_widget.changed.connect(
             lambda: self._dirty.add('countdown'))
+        self.schedule_widget = ScheduleWidget(self)
+        self.schedule_widget.changed.connect(lambda: self._dirty.add('schedule'))
+        self.tabs.addTab(self._wrap_scroll(self.schedule_widget), '作息')
+
         self.tabs.addTab(self._wrap_scroll(self.countdown_widget), '倒计时')
 
         self.app_tab = ExternalToolTab(
