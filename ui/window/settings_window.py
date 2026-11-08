@@ -241,7 +241,8 @@ class OndutySpawnWidget(SettingsWidgetBase):
 
     def _choose_group(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, '选择分组文件', FILE_DIR, 'CSV (*.csv)')
+            self, '选择分组文件', FILE_DIR,
+            '表格 (*.csv *.xlsx);;CSV (*.csv);;Excel (*.xlsx)')
         if path:
             self.group_le.setText(path)
             self.refresh_preview()
@@ -1371,8 +1372,10 @@ class CountdownWidget(SettingsWidgetBase):
         row = QHBoxLayout()
         self.add_btn = QPushButton('新增')
         self.del_btn = QPushButton('删除选中')
-        row.addWidget(self.add_btn)
-        row.addWidget(self.del_btn)
+        self.up_btn = QPushButton('上移')
+        self.down_btn = QPushButton('下移')
+        for b in (self.add_btn, self.del_btn, self.up_btn, self.down_btn):
+            row.addWidget(b)
         row.addStretch(1)
         layout.addLayout(row)
 
@@ -1386,10 +1389,18 @@ class CountdownWidget(SettingsWidgetBase):
 
         self.add_btn.clicked.connect(self._on_add)
         self.del_btn.clicked.connect(self._on_del)
+        self.up_btn.clicked.connect(lambda: self._move(-1))
+        self.down_btn.clicked.connect(lambda: self._move(1))
         self.reset_btn.clicked.connect(self._load)
         self.save_btn.clicked.connect(self.save)
 
+    MAX_COUNTDOWNS = 3
+
     def _on_add(self):
+        if self.table.rowCount() >= self.MAX_COUNTDOWNS:
+            QMessageBox.information(
+                self, '提示', f'最多只能有 {self.MAX_COUNTDOWNS} 个倒计时')
+            return
         r = self.table.rowCount()
         self.table.insertRow(r)
         self.table.setItem(r, 0, QTableWidgetItem('新倒计时'))
@@ -1399,6 +1410,22 @@ class CountdownWidget(SettingsWidgetBase):
         rows = sorted({i.row() for i in self.table.selectedIndexes()}, reverse=True)
         for r in rows:
             self.table.removeRow(r)
+
+    def _move(self, delta: int):
+        rows = sorted({i.row() for i in self.table.selectedIndexes()})
+        if len(rows) != 1:
+            return
+        r = rows[0]
+        target = r + delta
+        if not (0 <= target < self.table.rowCount()):
+            return
+        values = [self.table.item(r, c).text() if self.table.item(r, c) else ''
+                  for c in range(2)]
+        self.table.removeRow(r)
+        self.table.insertRow(target)
+        for c, v in enumerate(values):
+            self.table.setItem(target, c, QTableWidgetItem(v))
+        self.table.selectRow(target)
 
     def _load(self):
         cfg = load_user_settings()

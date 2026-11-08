@@ -384,6 +384,40 @@ class SchedulePage(_Page):
         self.editor = ScheduleEditor(rows=DEFAULT_CLASS_ROWS)
         self.body.addWidget(self.editor, 1)
 
+        row = QHBoxLayout()
+        self.import_btn = QPushButton('导入作息…')
+        self.import_btn.setMinimumHeight(36)
+        self.import_btn.clicked.connect(self._on_import)
+        row.addWidget(self.import_btn)
+        row.addWidget(QLabel('支持 5 列（周一~周五）或「开始/结束」两列'))
+        row.addStretch(1)
+        self.body.addLayout(row)
+
+    def _on_import(self):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        from services.imports import parse_lesson_times, read_table
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, '导入作息', '', '表格 (*.csv *.xlsx);;CSV (*.csv);;Excel (*.xlsx)')
+        if not path:
+            return
+        try:
+            mapping = parse_lesson_times(read_table(path))
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.warning(self, '导入失败', f'{e!r}')
+            return
+        if not mapping:
+            QMessageBox.warning(
+                self, '没读到作息',
+                '表格里没找到可用的时间。\n'
+                '请用「周一~周五」五列，或「开始 / 结束」两列，Time 写成 07:40-08:20。')
+            return
+        self.editor.set_times(mapping)
+        QMessageBox.information(
+            self, '已导入',
+            f'已导入 {len(mapping)} 天、每天 {len(next(iter(mapping.values())))} 节。')
+
     # 与课表节数同步
     def set_row_count(self, count: int):
         self.editor.set_row_count(count)

@@ -64,3 +64,59 @@ def write_template(path: str) -> str:
 
     wb.save(path)
     return path
+
+
+def parse_lesson_times(df):
+    """把导入表解析成 {星期: [(开始, 结束), ...]}。
+
+    支持两种格式：
+        1) 五列（周一/周二/…/周五），每个单元格写 "07:40-08:20"
+        2) 两列（开始 / 结束），所有工作日共用
+    解析不出的行跳过；完全解析不出时返回空 dict。
+    """
+    from config import CLASS_WEEKDAYS
+
+    def _norm(cell) -> str:
+        text = '' if cell is None else str(cell).strip()
+        return text.replace('：', ':').replace('~', '-').replace('—', '-')
+
+    def _split(text):
+        text = _norm(text)
+        if not text:
+            return None
+        parts = [p.strip() for p in text.split('-') if p.strip()]
+        if len(parts) != 2:
+            return None
+        return parts[0], parts[1]
+
+    columns = [str(c).strip() for c in df.columns]
+    result = {}
+
+    # 格式 1：按星期分列
+    week_cols = [c for c in CLASS_WEEKDAYS if c in columns]
+    if len(week_cols) >= 2:
+        for weekday, name in enumerate(CLASS_WEEKDAYS, start=1):
+            if name not in columns:
+                continue
+            slots = []
+            for value in df[name].tolist():
+                parsed = _split(value)
+                if parsed:
+                    slots.append(parsed)
+            if slots:
+                result[weekday] = slots
+        return result
+
+    # 格式 2：开始/结束 两列，五天共用
+    start_col = next((c for c in columns if c in ('开始', '开始时间', '起')), None)
+    end_col = next((c for c in columns if c in ('结束', '结束时间', '止')), None)
+    if start_col and end_col:
+        slots = []
+        for start, end in zip(df[start_col].tolist(), df[end_col].tolist()):
+            s, e = _norm(start), _norm(end)
+            if s and e:
+                slots.append((s, e))
+        if slots:
+            for weekday in range(1, 6):
+                result[weekday] = list(slots)
+    return result
