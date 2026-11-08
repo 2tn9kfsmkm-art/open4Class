@@ -232,7 +232,7 @@ class app_chain(Chain):
         tmp_data = self.applications._df['软件链接'].to_list()
         reshape = reshapeRow(tmp_data, 1, defaultNone=None)
         if reshape and reshape[0]:
-            reshape[0].append('...')
+            pass          # 不再追加「...」入口：应用链接在设置里管理
         elif not reshape:
             reshape = [['...']]
         self.app_reshape_model = PandasQItemModel(reshape, parent=self.widget)

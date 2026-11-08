@@ -23,7 +23,7 @@ from ui.component.dropable_table import (
 from tools.PandasQModel import PandasQItemModel
 
 from config import (
-    FILE_DIR, ENCODING, wordday,
+    FILE_DIR, ENCODING, wordday, today, str_date,
     load_user_settings, save_user_settings,
 )
 from ondutySpawn import (
