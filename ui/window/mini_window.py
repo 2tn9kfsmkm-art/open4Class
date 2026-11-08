@@ -109,7 +109,7 @@ class TopBar(QWidget):
         tallest = max(lbl.fontMetrics().height()
                       for lbl in (self.time_l, self.course_l,
                                   self.next_l, self.info_l))
-        self.setFixedHeight(max(tallest + 52, 100))
+        self.setFixedHeight(max(tallest + 38, 84))
 
     @staticmethod
     def _label(pt: int, color: str, bold: bool = False) -> QLabel:
