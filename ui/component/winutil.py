@@ -19,7 +19,13 @@ def force_foreground(win, maximize: bool = True) -> None:
 
     win.raise_()
     win.activateWindow()
-    win.requestActivate()
+    # QWidget 没有 requestActivate（那是 QWindow 的方法），拿窗口句柄再试
+    try:
+        handle = win.windowHandle()
+        if handle is not None:
+            handle.requestActivate()
+    except Exception:                           # noqa: BLE001
+        pass
 
     try:
         import ctypes

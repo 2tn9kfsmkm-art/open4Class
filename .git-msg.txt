@@ -1,0 +1,6 @@
+﻿fix(置前): QWidget 没有 requestActivate，改用 windowHandle()
+
+QWidget/QMainWindow 都没有 requestActivate（那是 QWindow 的方法），
+force_foreground 里直接调用会抛 AttributeError。之前只在「主窗口不是前台」时
+才会走到那一行，所以表现为「打开过一次设置、再最小化」才报错。
+改为先取 windowHandle() 再 requestActivate，取不到就算了。
