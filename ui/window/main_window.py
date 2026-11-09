@@ -469,9 +469,24 @@ class Main(wn_Main, QMainWindow):
         self._start_menu = menu          # 持有引用，避免被回收
 
     def open_settings(self):
+        """打开设置。
+
+        用非模态 show() 而不是 exec()：模态会拦掉同程序其它窗口的输入，
+        最小化后连「班级」小窗都点不动（系统只会响一声）。
+        """
+        existing = getattr(self, '_settings_dlg', None)
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return
+
         dlg = SettingsDialog(self)
+        dlg.setModal(False)                 # 明确非模态
         dlg.changed.connect(self._on_settings_changed)
-        dlg.exec()
+        self._settings_dlg = dlg            # 持有引用，避免被回收
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
 
     def _on_settings_changed(self, keys: set):
         for k in keys:
