@@ -1,8 +1,9 @@
-﻿fix(悬浮层): 设置开着时点小窗回主界面没有最大化
+﻿feat(交互): 课表编辑、值日编辑、随机选人改为非模态
 
-_was_maximized 只在「最小化」分支里记录；现在设置是非模态，悬浮层也会因为
-主窗口失焦而显示，那条路径没记录状态，restore 时拿到的是旧值/False。
-改为在每次 show_all 之前统一调用 _remember_window_state()。
-验证：最大化 + 开设置 + 悬浮层 -> 返回后仍最大化。
+模态窗口会拦掉同程序其它窗口的输入（悬浮层点击失效、主窗口不能用）。
+- 课表/值日：exec() -> show() + setModal(False)，关闭后用 finished 信号
+  做原本 exec 之后的刷新（_after_classlist_edit / _after_onduty_edit）
+- 随机选人：显式 setModal(False)
+验证：三者 isModal=False，activeModal=None，测试全绿。
 
 （未 push）

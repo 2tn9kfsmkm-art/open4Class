@@ -529,7 +529,9 @@ class Main(wn_Main, QMainWindow):
     def openWn_random(self):
         names = self.data['stu_model']._df['name'].tolist()
         self.wn_random = wn_random(data=names)
+        self.wn_random.setModal(False)      # 非模态：开着也能操作主界面
         self.wn_random.show()
+        self.wn_random.raise_()
 
     def openWn_classlist(self, lesson: QModelIndex|None = None):
         if lesson is not None:
@@ -559,10 +561,15 @@ class Main(wn_Main, QMainWindow):
                     on_save=_save_today_classlist,
                     default_simple=True, show_size=show_size,
                     row_ops=True)                       # ← 允许加/删行
-            self.wn_classlist.exec()
-            self.data.classlist_chain.play(self)
-            self.classlist_tv.clearSelection()
-            self.classlist_tv.setCurrentIndex(QModelIndex())
+            self.wn_classlist.setModal(False)
+            self.wn_classlist.finished.connect(self._after_classlist_edit)
+            self.wn_classlist.show()
+            self.wn_classlist.raise_()
+
+    def _after_classlist_edit(self, _result=0):
+        self.data.classlist_chain.play(self)
+        self.classlist_tv.clearSelection()
+        self.classlist_tv.setCurrentIndex(QModelIndex())
 
     def openWn_Onduty(self, stu: QModelIndex|None = None):
         if stu is None:
@@ -608,7 +615,12 @@ class Main(wn_Main, QMainWindow):
                 col_min_width=220,
                 on_save=_save_onduty_from_editor)
 
-        self.wn_Onduty.exec()
+        self.wn_Onduty.setModal(False)
+        self.wn_Onduty.finished.connect(self._after_onduty_edit)
+        self.wn_Onduty.show()
+        self.wn_Onduty.raise_()
+
+    def _after_onduty_edit(self, _result=0):
         self.data.onduty_chain.load()
         self.data.onduty_chain.process()
         self.data.onduty_chain.play(self)
