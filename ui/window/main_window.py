@@ -259,12 +259,43 @@ class Main(wn_Main, QMainWindow):
         else:
             self.showNormal()
 
+        hidden = getattr(self, '_hidden_modal', None)
+        if hidden is not None:
+            self._restore_hidden_modal()
+            return
+
         if modal is not None:
             modal.raise_()
             modal.activateWindow()
             return
 
         force_foreground(self, maximize=getattr(self, '_was_maximized', True))
+
+    # ---------- 模态窗口与悬浮层 ----------
+    def _hide_modal_for_mini(self):
+        """最小化时藏起模态子窗口。
+
+        模态窗口会拦截同程序其它窗口的输入，连「班级」小窗都点不动，
+        Windows 只会响一声。先把它藏起来，回主界面时再放回去。
+        """
+        from PySide6.QtWidgets import QDialog
+
+        for widget in self.findChildren(QDialog):
+            if widget.isVisible() and widget.isModal():
+                self._hidden_modal = widget
+                widget.hide()
+                return
+
+    def _restore_hidden_modal(self):
+        modal = getattr(self, '_hidden_modal', None)
+        self._hidden_modal = None
+        if modal is not None:
+            try:
+                modal.show()
+                modal.raise_()
+                modal.activateWindow()
+            except Exception:                   # noqa: BLE001
+                pass
 
     # ---------- 最小化 / 恢复 ----------
     def changeEvent(self, event):
@@ -276,6 +307,7 @@ class Main(wn_Main, QMainWindow):
         if event.type() == QEvent.Type.WindowStateChange:
             if self.isMinimized():
                 self._was_maximized = self.isMaximized()
+                self._hide_modal_for_mini()
                 # 用 singleShot 让窗口状态先落定，再摆悬浮窗
                 QTimer.singleShot(0, mini.show_all)
             elif mini.is_visible() and self.isActiveWindow():
