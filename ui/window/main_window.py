@@ -197,6 +197,7 @@ class Main(wn_Main, QMainWindow):
 
         if self.isMinimized():
             if not mini.is_visible():
+                self._remember_window_state()
                 log('poll', 'minimized -> show_all')
                 mini.show_all()
             return
@@ -216,6 +217,7 @@ class Main(wn_Main, QMainWindow):
         # 前面开个小窗口、点开始菜单都不该把它弄没。
         if not mini.is_visible() and not is_shell_foreground() \
                 and foreground_covers_screen():
+            self._remember_window_state()
             mini.show_all()
 
     # ---------- 悬浮窗数据 ----------
@@ -273,6 +275,10 @@ class Main(wn_Main, QMainWindow):
 
         force_foreground(self, maximize=getattr(self, '_was_maximized', True))
 
+    def _remember_window_state(self):
+        """显示悬浮层前记住主窗口是不是最大化，回来时才能还原。"""
+        self._was_maximized = self.isMaximized()
+
     def _visible_modal(self):
         """当前属于主窗口的可见模态对话框（设置、向导等）。"""
         from PySide6.QtWidgets import QDialog
@@ -301,7 +307,7 @@ class Main(wn_Main, QMainWindow):
                 QTimer.singleShot(0, self._restore_from_mini)
                 return
             if self.isMinimized():
-                self._was_maximized = self.isMaximized()
+                self._remember_window_state()
                 # 用 singleShot 让窗口状态先落定，再摆悬浮窗
                 QTimer.singleShot(0, mini.show_all)
             elif mini.is_visible() and self.isActiveWindow():
