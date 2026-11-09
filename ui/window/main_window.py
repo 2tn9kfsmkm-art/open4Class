@@ -238,12 +238,32 @@ class Main(wn_Main, QMainWindow):
             return []
 
     def _restore_from_mini(self):
-        # 先显式清掉最小化状态，否则 showMaximized 在部分环境下无效
+        """从悬浮层回到主界面。
+
+        如果此时开着模态窗口（设置、向导等），主窗口是被禁用的，
+        直接 activateWindow 只会"叮"一声。这种情况把模态窗口带到前面，
+        主窗口在它后面恢复。
+        """
+        from PySide6.QtWidgets import QApplication, QDialog
+
+        modal = None
+        for widget in QApplication.topLevelWidgets():
+            if (isinstance(widget, QDialog) and widget.isVisible()
+                    and widget.parent() is self):
+                modal = widget
+                break
+
         self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
         if getattr(self, '_was_maximized', False):
             self.showMaximized()
         else:
             self.showNormal()
+
+        if modal is not None:
+            modal.raise_()
+            modal.activateWindow()
+            return
+
         force_foreground(self, maximize=getattr(self, '_was_maximized', True))
 
     # ---------- 最小化 / 恢复 ----------

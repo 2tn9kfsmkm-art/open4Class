@@ -1,6 +1,5 @@
-﻿fix(置前): QWidget 没有 requestActivate，改用 windowHandle()
+﻿fix(悬浮层): 开着设置/向导时点「班级」只会响一声、回不到主界面
 
-QWidget/QMainWindow 都没有 requestActivate（那是 QWindow 的方法），
-force_foreground 里直接调用会抛 AttributeError。之前只在「主窗口不是前台」时
-才会走到那一行，所以表现为「打开过一次设置、再最小化」才报错。
-改为先取 windowHandle() 再 requestActivate，取不到就算了。
+模态窗口打开时主窗口被禁用，activateWindow 对禁用窗口无效（Windows 会响提示音）。
+现在 _restore_from_mini 先找有没有属于主窗口的可见模态对话框：
+有的话恢复主窗口状态后把该对话框带到前面，不再尝试激活被禁用的主窗口。
