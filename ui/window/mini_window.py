@@ -333,6 +333,8 @@ class MiniController:
         self.bar.refresh(now, courses, countdowns, times)
 
     def _back(self):
+        from services.diag import log
+        log('chip', 'back clicked')
         self.hide_all()
         if callable(self._on_back):
             self._on_back()

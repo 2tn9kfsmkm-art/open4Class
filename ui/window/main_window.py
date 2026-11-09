@@ -25,6 +25,7 @@ from ui.window.setup_wizard import SetupWizard
 from ui.window.table_editor import TableEditor
 from ui.component.tray import TrayIcon
 from ui.tokens import COLORS
+from services.diag import log
 from ui.component.touch import enable_touch_scroll
 from ui.component.winutil import (
     force_foreground, foreground_covers_screen, is_shell_foreground,
@@ -129,6 +130,8 @@ class Main(wn_Main, QMainWindow):
         for _tv in (self.onduty_tv, self.classlist_tv):
             _tv.viewport().installEventFilter(self._clear_filter)
 
+        log('app', 'main window ready')
+
         # 数据加载
         for _tv in (self.classlist_tv, self.onduty_tv, self.applink_tv):
             enable_touch_scroll(_tv)
@@ -194,6 +197,7 @@ class Main(wn_Main, QMainWindow):
 
         if self.isMinimized():
             if not mini.is_visible():
+                log('poll', 'minimized -> show_all')
                 mini.show_all()
             return
 
@@ -238,6 +242,8 @@ class Main(wn_Main, QMainWindow):
             return []
 
     def _restore_from_mini(self):
+        log('restore', f'enter minimized={self.isMinimized()} '
+                       f'modal={type(self._visible_modal()).__name__ if self._visible_modal() else None}')
         """从悬浮层回到主界面。
 
         如果此时开着模态窗口（设置、向导等），主窗口是被禁用的，
@@ -260,6 +266,7 @@ class Main(wn_Main, QMainWindow):
             self.showNormal()
 
         if modal is not None:
+            log('restore', 'raise modal')
             modal.raise_()
             modal.activateWindow()
             return
@@ -279,6 +286,11 @@ class Main(wn_Main, QMainWindow):
     # ---------- 最小化 / 恢复 ----------
     def changeEvent(self, event):
         super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange:
+            modal = self._visible_modal()
+            log('state', f'minimized={self.isMinimized()} '
+                         f'active={self.isActiveWindow()} '
+                         f'modal={type(modal).__name__ if modal else None}')
         mini = getattr(self, 'mini', None)
         if mini is None:
             return
