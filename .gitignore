@@ -38,3 +38,8 @@ messages/images/
 
 # macOS 资源文件
 ._*
+
+# 打包产物
+build/
+installer/
+*.exe

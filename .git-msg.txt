@@ -1,6 +1,0 @@
-﻿fix(重置): 退出走父链查找主窗口；重置流程写入诊断日志
-
-GeneralWidget 的 parent 是 QScrollArea，之前 self.parent() 拿不到主窗口，
-仍然走 app.quit() -> closeEvent -> 最小化。改为沿父链找 quit_app。
-并给备份/重置/失败三个节点加日志，便于真机定位到底断在哪一步。
-（未 push）
