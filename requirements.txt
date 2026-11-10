@@ -8,6 +8,7 @@
 #   - 默认写时复制（CoW）、字符串 dtype 为 str
 # 如需回退到 2.x：python -m pip install "pandas<3"
 
+cryptography==50.0.2
 et_xmlfile==2.0.0
 numpy==2.5.4
 openpyxl==3.1.5

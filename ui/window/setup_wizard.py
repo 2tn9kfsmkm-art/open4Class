@@ -134,7 +134,8 @@ class WelcomePage(_Page):
         tip.setWordWrap(True)
         tip.setStyleSheet('font-size: 11pt; line-height: 170%;')
         self.body.addWidget(tip)
-        self.body.addStretch(1)
+
+        self.body.addWidget(self._build_cloud_card())
 
         warn = QLabel(
             '注意：如果这台电脑上已经有班级数据，请直接取消 —— '
@@ -145,6 +146,48 @@ class WelcomePage(_Page):
             'font-size: 11pt; color: #C62828; background: #FDF0F0;'
             'border: 1px solid #F0C0C0; border-radius: 6px; padding: 10px;')
         self.body.addWidget(warn)
+        self.body.addStretch(1)
+
+    def _build_cloud_card(self) -> QFrame:
+        card = QFrame()
+        card.setObjectName('CloudCard')
+        card.setStyleSheet(
+            'QFrame#CloudCard { background: #F7F7F8; border: 1px solid #E3E5E8;'
+            'border-radius: 8px; }')
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(8)
+
+        head = QLabel('已经有传输账号？')
+        head.setStyleSheet('font-size: 12pt; font-weight: bold; color: #9b0d14;')
+        layout.addWidget(head)
+
+        desc = QLabel(
+            '老师可以在网页端填好名单、课表、作息和值日规则，生成一组 24 小时有效的'
+            '「传输账号 + 密码」。在这里输入账号密码，就能把数据一次性导进来，'
+            '不用手工重录；导入后每一页仍然可以修改。'
+        )
+        desc.setWordWrap(True)
+        desc.setStyleSheet('font-size: 10.5pt; color: #555555;')
+        layout.addWidget(desc)
+
+        row = QHBoxLayout()
+        self.cloud_btn = QPushButton('从云端导入…')
+        self.cloud_btn.setStyleSheet('font-size: 11pt; padding: 6px 20px;')
+        self.cloud_btn.clicked.connect(self._on_cloud_import)
+        row.addWidget(self.cloud_btn)
+        row.addStretch(1)
+        layout.addLayout(row)
+        return card
+
+    def _on_cloud_import(self):
+        from ui.window.cloud_import_dialog import CloudImportDialog
+
+        dialog = CloudImportDialog(self)
+        if dialog.exec() != QDialog.Accepted or dialog.preview is None:
+            return
+        self.wizard.apply_cloud_preview(dialog.preview)
 
 
 # ============================================================
@@ -864,6 +907,75 @@ class SetupWizard(QDialog):
                     item = QTableWidgetItem()
                     page.table.setItem(r, c, item)
                 item.setText(text)
+
+    # ---------- 云端导入 ----------
+    def apply_cloud_preview(self, preview) -> None:
+        """把云端数据填进各页（不落盘），再跳到班级信息页让用户确认。"""
+        from services.cloud_import import ONDUTY_MODES, format_expiry, summary_text
+
+        info_page = self.pages[1]
+        info = preview.info or {}
+        if info.get('school_name'):
+            info_page.school_le.setText(info['school_name'])
+        if info.get('class_full_name'):
+            info_page.full_le.setText(info['class_full_name'])
+        if info.get('class_short_name'):
+            info_page.short_le.setText(info['class_short_name'])
+
+        roster = self.pages[2]
+        roster.text_edit.setPlainText('\n'.join(preview.names))
+        roster._sync_preview()
+        self.data['names'] = list(preview.names)
+
+        classlist_page = self.pages[3]
+        df = preview.classlist
+        rows = 0 if df is None else int(df.shape[0])
+        if rows:
+            classlist_page.table.setRowCount(rows)
+            for r in range(rows):
+                for c in range(len(CLASS_WEEKDAYS)):
+                    value = df.iat[r, c]
+                    text = '' if value is None else str(value)
+                    text = '' if text.lower() == 'nan' else text
+                    classlist_page.table.setItem(r, c, QTableWidgetItem(text))
+
+        schedule_page = self.pages[4]
+        if rows:
+            schedule_page.set_row_count(rows)
+        if preview.lesson_times:
+            schedule_page.set_times(preview.lesson_times)
+
+        onduty_page = self.pages[5]
+        onduty = preview.onduty or {}
+        mode_index = ONDUTY_MODES.get(str(onduty.get('mode') or ''))
+        if mode_index is not None:
+            onduty_page.mode_cb.setCurrentIndex(mode_index)
+        if onduty.get('start'):
+            moment = QDate.fromString(onduty['start'], 'yyyy-MM-dd')
+            if moment.isValid():
+                onduty_page.start_de.setDate(moment)
+        if onduty.get('weeks'):
+            onduty_page.weeks_sb.setValue(int(onduty['weeks']))
+        if onduty.get('daily'):
+            onduty_page.daily_sb.setValue(int(onduty['daily']))
+        if onduty.get('jobs'):
+            onduty_page.jobs_le.setText(','.join(onduty['jobs']))
+        if isinstance(onduty.get('skip_weekend'), bool):
+            onduty_page.skip_weekend_cb.setChecked(onduty['skip_weekend'])
+        if onduty.get('group_count'):
+            onduty_page.group_count_sb.setValue(int(onduty['group_count']))
+        if onduty.get('groups'):
+            onduty_page._imported_groups = dict(onduty['groups'])
+            onduty_page.group_count_sb.setEnabled(False)
+        onduty_page._on_mode_changed()
+
+        self._goto(1)
+
+        lines = [f'已从云端导入：{summary_text(preview)}']
+        if preview.expires_at:
+            lines.append(f'账号有效期至 {format_expiry(preview.expires_at)}')
+        lines.extend(['', '下面每一页都可以再修改；点「完成」才会写入本机。'])
+        QMessageBox.information(self, '导入成功', '\n'.join(lines))
 
     def _on_next(self):
         page = self.pages[self.current]
