@@ -1,0 +1,8 @@
+﻿build: 分发包排除 messages\images（班级照片属隐私数据）；修正 exe 命名
+
+- 原来 --include-data-dir=messages=messages 会把 8 张班级照片打进安装包，
+  换上别的班就会泄露。改为只带 message.html 与 templates。
+- Nuitka standalone 生成的 exe 跟随入口脚本名（main.exe），编译后重命名为
+  ClassManager.exe，与 installer.iss 的 {#APPEXE} 对齐。
+
+（本地提交，未 push、未打 tag）
