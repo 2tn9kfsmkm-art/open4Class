@@ -1,9 +1,6 @@
-﻿build: .bat 改为 ASCII 外壳 + PowerShell 主体；适配 Nuitka 4.x 参数
+﻿build: 强制使用 MinGW64，绕开 Nuitka 默认 zig 编译器的崩溃
 
-1. 原来的 build.bat 用 LF 换行且含中文注释，cmd 会把每行拆成乱命令（
-   ''APPVERSION'' is not recognized ...）。现在 build.bat 只有 4 行 ASCII、CRLF，
-   真正逻辑放在 build.ps1。
-2. Nuitka 4.x 把 --windows-disable-console 改名为 --windows-console-mode=disable。
-3. 数据目录仍不含 messages\images（班级照片不外发）。
-
+nuitka-crash-report.xml 显示编译器是 zig（自动下载的 ziglang），
+在编译 module.data.c 时 zig 自身崩溃（Exception Code 0x20474343）。
+这不是项目代码的问题，改用 Nuitka 的 --mingw64 走 gcc 路线。
 （本地提交，未 push、未打 tag）

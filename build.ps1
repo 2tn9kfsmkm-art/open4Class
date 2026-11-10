@@ -22,6 +22,7 @@ $nuitkaArgs = @(
     "-m", "nuitka", "main.py",
     "--standalone",
     "--enable-plugin=pyside6",
+    "--mingw64",              # 不用默认的 zig：它在 Windows 上编译本工程会崩
     "--windows-console-mode=disable",
     "--windows-icon-from-ico=resources\icon.ico",
     "--company-name=Shixi High School",
