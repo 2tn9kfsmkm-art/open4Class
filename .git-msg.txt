@@ -1,1 +1,10 @@
-﻿chore: 忽略 Nuitka 崩溃报告
+build: Python 3.13 改用 MSVC 编译器（--msvc=latest）
+
+Nuitka 在 Python 3.13+ 上拒绝 --mingw64（FATAL: cannot use '--mingw64' on
+Python version 3.13 or higher），而默认 zig 在本机编译会崩。
+改为 --msvc=latest，需要安装 VS 2022 Build Tools 的 C++ 桌面开发工作负载。
+
+安装命令（一条，免交互）：
+winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+（本地提交，未 push、未打 tag）

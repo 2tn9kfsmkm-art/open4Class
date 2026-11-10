@@ -2,7 +2,7 @@
 # Usage:  .\build.ps1            -> version from latest git tag
 #         .\build.ps1 0.40.0     -> explicit version
 
-param([string]$Version = "")
+param([string]$Version = "", [string]$Compiler = "auto")
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -16,13 +16,20 @@ if (-not $Version) {
 if (-not $Version) { $Version = "0.0.0" }
 Write-Host "[build] version: $Version"
 
+$pyMinor = (& python -c "import sys; print(sys.version_info.minor)").Trim()
+Write-Host "[build] python 3.$pyMinor"
+if ($pyMinor -ge 13 -and $Compiler -eq "mingw") {
+    Write-Host "[build] Python 3.$pyMinor 不支持 MinGW，忽略该选项"
+}
+
 if (Test-Path build) { Remove-Item build -Recurse -Force }
 
 $nuitkaArgs = @(
     "-m", "nuitka", "main.py",
     "--standalone",
     "--enable-plugin=pyside6",
-    "--mingw64",              # 不用默认的 zig：它在 Windows 上编译本工程会崩
+    # 编译器：zig 在本机编译本工程会崩；Python 3.13 又不支持 mingw64，故默认 msvc
+    "--msvc=latest"
     "--windows-console-mode=disable",
     "--windows-icon-from-ico=resources\icon.ico",
     "--company-name=Shixi High School",
