@@ -1,11 +1,6 @@
-﻿fix(重置): 「删除全部数据」没反应——数据库被占用、删不掉却静默失败
+﻿fix(重置): 退出走父链查找主窗口；重置流程写入诊断日志
 
-1. reset_all 开头先 reset_shared_store() 断开数据库连接，Windows 上才能删掉
-   classmanager.db / -wal / -shm
-2. _clear_dir 不再吞掉 OSError：删不掉时抛错并在界面上显示哪些文件被占用
-   （之前是静默跳过，所以看起来「什么都没删」）
-3. 删除完成后调用 main.quit_app() 而不是 app.quit()：现在 closeEvent 会把关闭
-   拦成最小化，所以原来表现为「确认完只是最小化了」
-验证：占用时能报出文件名；释放后 data 只剩 settings.json、setup.json 已删除。
-
+GeneralWidget 的 parent 是 QScrollArea，之前 self.parent() 拿不到主窗口，
+仍然走 app.quit() -> closeEvent -> 最小化。改为沿父链找 quit_app。
+并给备份/重置/失败三个节点加日志，便于真机定位到底断在哪一步。
 （未 push）

@@ -1104,6 +1104,9 @@ class GeneralWidget(SettingsWidgetBase):
 
     # ---------- 危险操作：三重确认 ----------
     def _on_wipe_all(self):
+        from services.diag import log
+
+        log('wipe', 'clicked')
         cfg = load_user_settings()
         short_name = cfg.get('class_short_name', '')
 
@@ -1144,9 +1147,13 @@ class GeneralWidget(SettingsWidgetBase):
             return
 
         try:
+            log('wipe', 'backup start')
             backup = bootstrap.backup_all()
+            log('wipe', f'backup done {backup}')
             bootstrap.reset_all(keep_messages=False)
+            log('wipe', 'reset done')
         except Exception as e:
+            log('wipe', f'failed: {e!r}')
             QMessageBox.critical(self, '删除失败', f'{e}')
             return
 
@@ -1155,10 +1162,14 @@ class GeneralWidget(SettingsWidgetBase):
             f'数据已清空，备份保存在：\n{backup}\n\n'
             '请手动重新打开程序，届时会进入首次使用设置向导。')
 
-        main = self.parent()
-        if main is not None and hasattr(main, 'quit_app'):
-            main.quit_app()                     # 走真正的退出，不被 closeEvent 拦成最小化
-            return
+        node = self
+        for _ in range(8):
+            node = node.parent() if node is not None else None
+            if node is None:
+                break
+            if hasattr(node, 'quit_app'):
+                node.quit_app()                 # 真正退出，不被 closeEvent 拦成最小化
+                return
         app = QApplication.instance()
         if app is not None:
             app.quit()
