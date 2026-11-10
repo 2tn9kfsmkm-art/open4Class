@@ -240,15 +240,21 @@ def backup_all(root: str | None = None) -> str:
 def _clear_dir(path: str, keep_dir: bool = True) -> None:
     if not os.path.isdir(path):
         return
+    failures = []
     for name in os.listdir(path):
         target = os.path.join(path, name)
         if os.path.isdir(target):
             shutil.rmtree(target, ignore_errors=True)
+            if os.path.exists(target):
+                failures.append(name)
         else:
             try:
                 os.remove(target)
             except OSError:
-                pass
+                failures.append(name)
+    if failures:
+        raise RuntimeError(
+            '以下文件删不掉（可能仍被占用）：' + '、'.join(failures))
     if not keep_dir:
         shutil.rmtree(path, ignore_errors=True)
 
@@ -290,6 +296,12 @@ def reset_all(root: str | None = None, keep_messages: bool = False,
         备份目录路径（调用方应在提示里告诉用户）。
     """
     dirs = _dirs(root)
+    # 先断开数据库连接，否则 Windows 上删不掉 classmanager.db
+    try:
+        from data.store import reset_shared_store
+        reset_shared_store()
+    except Exception:                           # noqa: BLE001
+        pass
     backup = backup_all(root)
 
     apps = _collect_apps(dirs) if keep_apps else None

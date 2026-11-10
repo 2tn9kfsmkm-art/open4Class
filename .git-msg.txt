@@ -1,9 +1,11 @@
-﻿feat(交互): 课表编辑、值日编辑、随机选人改为非模态
+﻿fix(重置): 「删除全部数据」没反应——数据库被占用、删不掉却静默失败
 
-模态窗口会拦掉同程序其它窗口的输入（悬浮层点击失效、主窗口不能用）。
-- 课表/值日：exec() -> show() + setModal(False)，关闭后用 finished 信号
-  做原本 exec 之后的刷新（_after_classlist_edit / _after_onduty_edit）
-- 随机选人：显式 setModal(False)
-验证：三者 isModal=False，activeModal=None，测试全绿。
+1. reset_all 开头先 reset_shared_store() 断开数据库连接，Windows 上才能删掉
+   classmanager.db / -wal / -shm
+2. _clear_dir 不再吞掉 OSError：删不掉时抛错并在界面上显示哪些文件被占用
+   （之前是静默跳过，所以看起来「什么都没删」）
+3. 删除完成后调用 main.quit_app() 而不是 app.quit()：现在 closeEvent 会把关闭
+   拦成最小化，所以原来表现为「确认完只是最小化了」
+验证：占用时能报出文件名；释放后 data 只剩 settings.json、setup.json 已删除。
 
 （未 push）
