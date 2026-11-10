@@ -1,8 +1,9 @@
-﻿build: 分发包排除 messages\images（班级照片属隐私数据）；修正 exe 命名
+﻿build: .bat 改为 ASCII 外壳 + PowerShell 主体；适配 Nuitka 4.x 参数
 
-- 原来 --include-data-dir=messages=messages 会把 8 张班级照片打进安装包，
-  换上别的班就会泄露。改为只带 message.html 与 templates。
-- Nuitka standalone 生成的 exe 跟随入口脚本名（main.exe），编译后重命名为
-  ClassManager.exe，与 installer.iss 的 {#APPEXE} 对齐。
+1. 原来的 build.bat 用 LF 换行且含中文注释，cmd 会把每行拆成乱命令（
+   ''APPVERSION'' is not recognized ...）。现在 build.bat 只有 4 行 ASCII、CRLF，
+   真正逻辑放在 build.ps1。
+2. Nuitka 4.x 把 --windows-disable-console 改名为 --windows-console-mode=disable。
+3. 数据目录仍不含 messages\images（班级照片不外发）。
 
 （本地提交，未 push、未打 tag）
