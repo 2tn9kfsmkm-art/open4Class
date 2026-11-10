@@ -47,7 +47,7 @@ $nuitkaArgs = @(
     "--remove-output"
 )
 
-Write-Host "[build] compiling (first run downloads MinGW, be patient)..."
+Write-Host "[build] compiling with MSVC (需要 VS 2022 Build Tools)..."
 & python @nuitkaArgs
 if ($LASTEXITCODE -ne 0) { Write-Host "[build] FAILED"; exit 1 }
 
