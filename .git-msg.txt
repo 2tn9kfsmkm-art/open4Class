@@ -1,8 +1,11 @@
-fix(备份): 备份目录不可写时退化到 LOCALAPPDATA，并记录失败原因
+fix(值日/自检): 写库失败不再让整条数据链中断；启动时探测数据目录可写性
 
-真机报 [WinError 5] 拒绝访问 ...\backup\<时间戳>，导致「保留现有数据重跑向导」
-和「删除全部数据」都无法进行。
+真机现象：主界面值日栏空白，但数据库里 500 条记录都在。
+定位：启动时 onduty_chain 的 process 会 _save()，写库失败（readonly database /
+拒绝访问）导致 Chain.run 在 step 2 中止，play 从未执行，界面就空了。
 
-- backup_all：先试 %APPDATA%\ClassManager\backup，失败则退化到
-  %LOCALAPPDATA%\ClassManager\backup，两条路径都写进 debug.log
-- 复制单个条目失败也记日志并继续抛出，便于定位具体是哪个目录
+- onduty_chain._save 改为捕获异常并记日志，内存里的表照常显示
+- main.py 启动时向 %APPDATA%\ClassManager\data 写一个探针文件，
+  成功/失败都记进 debug.log，便于判断是不是权限/杀软拦截
+
+（本地提交，未 push、未打 tag）

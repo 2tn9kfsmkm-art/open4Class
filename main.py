@@ -93,6 +93,24 @@ def main():
     dpi_scale = (screen.logicalDotsPerInch() / 96.0) if screen else 1.0
     set_font_scale(1.0 - max(0.0, dpi_scale - 2.5) * 0.3)
 
+    # 数据目录写入自检：写不进去时后面的备份/保存都会失败，
+    # 提前记一笔日志，用户反馈问题时一眼能看到
+    try:
+        from config import DATA_BASE
+        from services.diag import log
+        probe = os.path.join(DATA_BASE, 'data', '.write-probe')
+        os.makedirs(os.path.dirname(probe), exist_ok=True)
+        with open(probe, 'w', encoding='utf-8') as f:
+            f.write('ok')
+        os.remove(probe)
+        log('probe', '数据目录可写')
+    except Exception as e:                      # noqa: BLE001
+        try:
+            from services.diag import log
+            log('probe', f'数据目录不可写: {e!r}')
+        except Exception:                       # noqa: BLE001
+            pass
+
     setQss(QSS_DIR + 'mainpage.qss', app)
 
     # 首次使用：先确认数据是否就绪，再创建主窗口。

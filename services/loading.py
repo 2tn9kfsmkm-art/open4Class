@@ -43,7 +43,22 @@ class onduty_chain(Chain):
         self.onduty_model = PandasQItemModel(data=shared_store().load_onduty())
 
     def _save(self):
-        shared_store().save_onduty(self.onduty_model._df)
+        """写库失败不能让整条链中断——否则界面上值日栏会直接空白。
+
+        数据库被占用/只读时，我们仍然把内存里的表显示出来，只是这一次的
+        改动没落盘；失败原因写进 debug.log。
+        """
+        try:
+            shared_store().save_onduty(self.onduty_model._df)
+            return True
+        except Exception as e:                  # noqa: BLE001
+            try:
+                from services.diag import log
+                log('onduty', f'保存失败: {e!r}')
+            except Exception:                   # noqa: BLE001
+                pass
+            print(f'[onduty] 保存失败（继续显示）: {e!r}')
+            return False
 
     def process(self):
         df = self.onduty_model._df
