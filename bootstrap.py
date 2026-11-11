@@ -220,7 +220,17 @@ def backup_all(root: str | None = None) -> str:
     dirs = _dirs(root)
     stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     dest = os.path.join(dirs['backup'], stamp)
-    os.makedirs(dest, exist_ok=True)
+    try:
+        os.makedirs(dest, exist_ok=True)
+    except OSError as e:
+        # 某些机器上 %APPDATA%\ClassManager\backup 被策略/同步盘锁住，退化到本地目录
+        from services.diag import log
+        log('backup', f'主备份目录不可用 {dest}: {e!r}，改用 LOCALAPPDATA')
+        fallback = os.path.join(
+            os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'),
+            'ClassManager', 'backup', stamp)
+        os.makedirs(fallback, exist_ok=True)
+        dest = fallback
 
     if not os.path.isdir(dirs['base']):
         return dest
@@ -230,10 +240,15 @@ def backup_all(root: str | None = None) -> str:
             continue
         src = os.path.join(dirs['base'], name)
         dst = os.path.join(dest, name)
-        if os.path.isdir(src):
-            shutil.copytree(src, dst, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dst)
+        try:
+            if os.path.isdir(src):
+                shutil.copytree(src, dst, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dst)
+        except OSError as e:
+            from services.diag import log
+            log('backup', f'复制失败 {name}: {e!r}')
+            raise
     return dest
 
 

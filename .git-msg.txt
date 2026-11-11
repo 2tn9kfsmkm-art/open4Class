@@ -1,9 +1,8 @@
-fix(启动): data.json 写失败不再让程序退出；未捕获异常写入 debug.log
+fix(备份): 备份目录不可写时退化到 LOCALAPPDATA，并记录失败原因
 
-打包后双击无反应的真因（从 exe 的 stderr 抓到的）：
-  PermissionError: [Errno 13] Permission denied: ...ClassManager\data\data.json
-发生在启动阶段记录 last_login 时，异常直接终止进程；因为打包关了控制台，
-用户只看到「双击没反应」。
+真机报 [WinError 5] 拒绝访问 ...\backup\<时间戳>，导致「保留现有数据重跑向导」
+和「删除全部数据」都无法进行。
 
-- tools/jsonModel.py：读写都包了异常，写失败只记日志；读兼容 UTF-8 BOM
-- main.py：入口加 _run_guarded()，未捕获异常先写 debug.log 再抛出
+- backup_all：先试 %APPDATA%\ClassManager\backup，失败则退化到
+  %LOCALAPPDATA%\ClassManager\backup，两条路径都写进 debug.log
+- 复制单个条目失败也记日志并继续抛出，便于定位具体是哪个目录
