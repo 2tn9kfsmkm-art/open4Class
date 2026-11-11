@@ -44,3 +44,4 @@ build/
 installer/
 *.exe
 nuitka-crash-report.xml
+.git-msg.txt
