@@ -1,4 +1,4 @@
-﻿# 路线图
+# 路线图
 
 > 依据 `HANDOFF.md` 的蓝图，按当前代码的真实状态重排。**每个阶段结束打 tag，主线始终保持可运行。**
 
@@ -33,6 +33,7 @@
 | P8 | 向导二期 | 作息时间收集（按星期、时分下拉）、分组导入支持 xlsx、导入模板下载、格式文档、重跑向导按「保留项」勾选 | 1.5 天 | ✅ `v0.21-imports` / `v0.23.7-lesson-save` |
 | P9 | UI 细化 / PySide6 | 颜色 token、设置 Tab 移底部、目录重构、换 Qt 绑定、冗余清理 | ? | ✅ `v0.16-pyside6` / `v0.17-layout` / `v0.18-ui-tokens` |
 | P10 | 文档 | `docs/USER_MANUAL.md` + HANDOFF 升 v1.1 | 0.5 天 | 待做 |
+| P11 | **云端导入** | 向导首页加「从云端导入」：输入 class-setup 的传输账号 + 密码，拉取名单/课表/作息/值日填进各页（`services/cloud_import.py` + `ui/window/cloud_import_dialog.py`） | 1 天 | ✅ 本次 |
 
 ## 关键依赖与风险
 
