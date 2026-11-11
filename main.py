@@ -143,5 +143,25 @@ def main():
     app.exec()
 
 
+def _run_guarded():
+    """兜底：把未捕获异常写进 debug.log 再抛出。
+
+    打包后没有控制台，崩溃时用户只看到"双击没反应"，
+    有了这条日志才能事后定位。
+    """
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+        try:
+            from services.diag import log
+            log('crash', traceback.format_exc())
+        except Exception:                       # noqa: BLE001
+            pass
+        raise
+
+
 if __name__ == '__main__':
-    main()
+    _run_guarded()
