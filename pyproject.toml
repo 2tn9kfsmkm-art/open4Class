@@ -1,3 +1,9 @@
+[project]
+name = "classmanager"
+version = "0.40.0"
+description = "高中班务管理系统（课表/值日/消息/倒计时）"
+license = { text = "GPL-3.0-or-later" }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
