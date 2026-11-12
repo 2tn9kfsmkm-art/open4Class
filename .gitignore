@@ -45,3 +45,5 @@ installer/
 *.exe
 nuitka-crash-report.xml
 .git-msg.txt
+# Nuitka 本地缓存
+.nuitka-cache/
