@@ -40,8 +40,44 @@ iscc /DAPPVERSION=0.40.0 installer.iss
 |---|---|
 | 安装位置 | `%LOCALAPPDATA%\ClassManager`（**免管理员**） |
 | 快捷方式 | 开始菜单 + 可选桌面 |
-| 数据位置 | `%APPDATA%\ClassManager`（卸载**不删**） |
+| 数据位置 | `%APPDATA%\ClassManager` |
 | 语言 | 简体中文向导 |
+| **卸载** | 「应用和功能」里有条目；**卸载时询问是否删除班级数据，默认保留** |
+
+## 2.1 卸载行为
+
+Inno Setup 自动生成卸载器，安装后在两个地方可见：
+
+1. **设置 → 应用 → 已安装的应用** 里的「班级管理系统」
+2. 开始菜单 → 班级管理系统 → **卸载 班级管理系统**
+
+卸载流程：
+
+```
+卸载程序
+  → 关闭正在运行的程序（依据 AppMutex，会提示先关掉）
+  → 删除 %LOCALAPPDATA%\ClassManager（程序本体）
+  → 弹窗：「是否同时删除班级数据？」
+        默认「否」→ 保留 %APPDATA%\ClassManager
+        选「是」→ 连名单/课表/值日/消息一起删掉（不可恢复）
+```
+
+## 2.2 教室机器批量安装（静默）
+
+```powershell
+.\ClassManager-Setup-0.40.0.exe /VERYSILENT /NORESTART /MERGETASKS=desktopicon
+```
+
+- 不弹任何界面、自动建桌面图标
+- 装完 `%LOCALAPPDATA%\ClassManager\ClassManager.exe`
+
+静默卸载：
+
+```powershell
+& "$env:LOCALAPPDATA\ClassManager\unins000.exe" /VERYSILENT /NORESTART
+```
+（静默卸载不会弹"是否删除数据"，**保留**数据。）
+
 
 ## 3. 发布
 
