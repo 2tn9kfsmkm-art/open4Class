@@ -1,88 +1,107 @@
-# 班级管理系统（ClassManager）
 
-一套给高中班级日常使用的桌面程序：**课表、值日、消息、倒计时、随机点名、应用快捷入口**，
-装在一体机（如希沃）上给全班看，老师在电脑上维护数据。
+# open4Class
 
-- 界面：PySide6（Qt 6）
-- 数据：SQLite（`%APPDATA%\ClassManager\data\classmanager.db`）
-- 打包：Nuitka（standalone）+ Inno Setup
-- 许可：[GPL-3.0](LICENSE)
+### This is an opensource class-manager for Chinese high/middle/primary schools.
+---
 
-## 功能
+这是一套给班级日常使用的桌面程序，包括：**课表、值日、消息、倒计时、随机点名、应用快捷入口**
+装在一体机上，目前能提供基础的信息，减轻每天重复无意义的动作（比如写课表）
+
+## Installation
+
+下载 [ReleasePage](https://github.com/2tn9kfsmkm-art/open4Class/releases) 里的 `ClassManager-Setup-x.y.z.exe`，双击安装：
+
+- 开始菜单和桌面（可选）会有快捷方式
+- 班级数据存在 `%APPDATA%\ClassManager`，**卸载时默认保留**（可勾选删除）
+
+> 若 Windows 提示「已保护你的电脑」，这是对未签名程序的默认拦截，点「更多信息 → 仍要运行」即可。杀软（360 / 电脑管家）若拦截写入，请把安装目录加入信任区。
+
+## Set up
+
+由于目前的软件仍处于本地运行模式，在第一次打开前需要准备好一下几个文件（Excel/CSV）:
+- 名单，一列姓名即可，表头用`name`，例如：
+
+| name |
+|---|
+| 张三 |
+| 李四 |
+| 王五 |
+
+- 课程表，表头为星期，例如：
+
+| 周一 | 周二 | 周三 | 周四 | 周五 |
+|---|---|---|---|---|
+| 语文 | 数学 | 英语 | 物理 | 化学 |
+| 地理 | 生物 | 历史 | 思政 | 信息 |
+
+-作息时间：尽管可以使用向导导入，但是UI现在还需一定的改进，建议使用导入功能：
+
+格式一：
+| 周一 | 周二 | 周三 | 周四 | 周五 |
+|---|---|---|---|---|
+| 7:30-8:10 | 7:30-8:10 | 7:30-8:10 | 7:30-8:10 | 7:30-8:10 |
+| 8:20-9:00 | 8:20-9:00 | 8:20-9:00 | 8:20-9:00 | 8:20-9:00 |
+
+格式二：
+| 开始 | 结束 |
+|---|---|
+| 7:30 | 8:10 |
+| 8:20 | 9:00 |
+> 采用格式二默认5天作息一致
+
+## Features
 
 | 模块 | 说明 |
 |---|---|
 | 今日课表 | 按星期显示当天各节课；双击可临时调整 |
-| 值日生 | 每天 5 个职务，可按顺序轮值或按分组轮值 |
+| 值日生 | 每天数个职务，可*按顺序轮值*或*按分组轮值*；双击可临时调整 |
 | 消息 | 富文本 + 图片，双击编辑 |
-| 倒计时 | 最多 3 个（高考、春考等），显示在左栏 |
-| 随机点名 | 大字号显示，投屏用 |
-| 应用链接 | 一键启动常用程序（U盘 / WPS / 希沃白板 / 浏览器等） |
-| 悬浮层 | 最小化后顶部显示时间与当前课（进度条显示本段剩余），右下角小窗可拖拽、点击回主界面 |
-| 首次向导 | 6 步完成配置；支持从云端一次性导入、Excel/CSV 导入 |
-| 作息时间 | 周一至周五可各自不同，精确到 1 分钟 |
+| 倒计时 | 最多 3 个（高考、期末考等），显示在左栏，自动倒数 |
+| 随机点名 | 选取名单内的一位同学 |
+| 应用链接 | 一键启动常用程序（内置 U盘（explorer） / WPS / 希沃白板 / 浏览器 在Seewo一体机上的默认目录） |
+| 悬浮窗 | 最小化后顶部显示时间与当前课（进度条显示本段剩余），右下角小窗可拖拽、用于点击返回主界面 |
+| 首次向导 | 6 步完成配置 |
+| 作息时间 | 用于进度条的绘制，周一至周五可各自不同 |
 
-## 安装
+更多信息请参见[user-manual.pdf](user-manual.pdf)
 
-下载 Release 里的 `ClassManager-Setup-x.y.z.exe`，双击安装：
+## Future developement plan
 
-- 装到 `%LOCALAPPDATA%\ClassManager`，**不需要管理员权限**
-- 开始菜单和桌面（可选）会有快捷方式
-- 班级数据存在 `%APPDATA%\ClassManager`，**卸载时默认保留**（可勾选删除）
+>由于开发者在读高三，不能保证后续开发的连续性，也不能保证后续功能能够在短期内实现。开发者可能会优先开发部分功能
 
-> 若 Windows 提示「已保护你的电脑」，这是对未签名程序的默认拦截，点
-> 「更多信息 → 仍要运行」即可。杀软（360 / 电脑管家）若拦截写入，请把
-> 安装目录加入信任区。
+- 自动更新
+- 支持更改学校名称、标志、主题色
+- 远程数据拉取（使用Cloudflare）
+- 支持远程管理班级内容，支持搭建服务器（适合全校使用）
+- 远程消息传输、历史消息存储
+- 一体机使用管理
+- UI优化
+- 性能优化
 
-## 从源码运行
-
-```powershell
-python -m pip install -r requirements.txt
-python main.py          # 带控制台，方便看日志
-# 或双击 ClassManager.pyw（无控制台）
-```
-
-Python 3.13 + PySide6 6.12。
-
-## 打包
-
-```powershell
-python -m pip install nuitka ordered-set zstandard
-.\build.bat 0.40.0                                    # 编译到 build\main.dist
-iscc /DAPPVERSION=0.40.0 installer.iss                # 生成安装包
-```
-
-细节见 [docs/PACKAGING.md](docs/PACKAGING.md)。
-
-## 目录结构
+## Structure
 
 ```
-main.py                 启动入口（单实例、DPI、向导判断）
-ui/window/              主窗口、设置、向导、各类编辑器
-ui/component/           通用组件（对话框、表格代理、悬浮层、托盘）
-services/               数据加载编排、导入、云端拉取、诊断日志
-core/                   纯逻辑（节次判断、轮值、形状处理）
-data/                   Store / Repository / SQLite 迁移
-tools/                  模型、样式加载、杂项
-docs/                   ROADMAP / SMOKE / PACKAGING / 导入格式
-tests/                  pytest（单元 + GUI）
+class-manager
+---main.py                 启动入口（单实例、DPI、向导判断）
+---ui/window/              主窗口、设置、向导、各类编辑器
+---ui/component/           通用组件（对话框、表格代理、悬浮层、托盘）
+---services/               数据加载编排、导入、云端拉取、诊断日志
+---core/                   纯逻辑（节次判断、轮值、形状处理）
+---data/                   Store / Repository / SQLite 迁移
+---tools/                  模型、样式加载、杂项
+---docs/                   ROADMAP / SMOKE / PACKAGING / 导入格式
+---tests/                  pytest（单元 + GUI）
 ```
 
-## 数据与隐私
+## Development
 
-- 所有数据只存在本机 `%APPDATA%\ClassManager`，不上传
-- 仓库里**不含**任何学生姓名、照片（`messages/images/` 与 `*.csv` 均被忽略）
-- 云端导入功能只在你主动输入账号密码时访问指定服务器
+欢迎issue，但是问题不一定能够及时解决，望见谅
 
-## 开发
+## Privacy
 
-```powershell
-python -m pip install -r requirements-dev.txt
-python -m pytest
-```
+open4Class目前阶段所有数据**只存在本机** `%APPDATA%\ClassManager`，不上传
 
-改动后请按 [docs/SMOKE.md](docs/SMOKE.md) 走一遍界面冒烟。
-
-## 许可
+## License
 
 本项目以 [GNU General Public License v3.0](LICENSE) 发布。
+
