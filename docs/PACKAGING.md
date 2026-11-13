@@ -24,7 +24,36 @@ build.bat 0.40.0     # 或手动指定
 
 - 用 `--standalone`（文件夹），**不要 `--onefile`**：启动快，杀软误报也少
 - `--enable-plugin=pyside6` 必须加，否则缺 `platforms\qwindows.dll` 会闪退
-- 样式表、图标、默认应用、消息模板都通过 `--include-data-dir` 打进去
+- 样式表、图标、默认应用、**SQL 迁移**都通过 `--include-data-dir` 打进去
+
+## 1.1 打包内容清单
+
+只有**运行时从磁盘读取**的文件才需要打包；`.py` 会被编译进 exe，不用单独处理。
+
+| 路径 | 是否打包 | 原因 |
+|---|---|---|
+| `stylesheet/*.qss` | ✅ | 启动时读 QSS |
+| `resources/icon.png`、`logo.png`、`icon.ico` | ✅ | 窗口图标、侧栏 logo、安装包图标 |
+| `resources/default_apps.json` | ✅ | 首次启动写入四个默认应用 |
+| `data/migrations/*.sql` | ✅ | **建库必需**，缺了向导保存会失败 |
+| `messages/` | ❌ | 已不再随包分发；首次启动为空，用户自己编辑 |
+| `tests/`、`docs/`、`.github/` | ❌ | 开发用 |
+| `tools/`、`ui/`、`windows/`、`dialogs/`、`services/`、`core/`、`data/*.py` | ❌ | 代码，编译进 exe |
+| `backups/`、`notes/`、`attachments/` | ❌ | 本地杂项 |
+| `.env`、`*.csv`、`*.db` | ❌ | 私人数据 |
+
+对应脚本里的三行：
+
+```powershell
+"--include-data-dir=stylesheet=stylesheet",
+"--include-data-dir=resources=resources",
+"--include-data-dir=data\migrations=data\migrations",
+```
+
+> 迁移文件的定位逻辑在 `data/migrations/migrate.py`：
+> 先找模块同目录（开发态），再找 exe 旁的 `data/migrations`（打包态），
+> 最后找 `RESOURCE_BASE/data/migrations`。
+
 
 ## 2. 生成安装包
 

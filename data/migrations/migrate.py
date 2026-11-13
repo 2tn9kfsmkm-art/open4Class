@@ -9,7 +9,45 @@
 import os
 import sqlite3
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+def _sql_dirs() -> list:
+    """按优先级列出可能存放 .sql 的目录。
+
+    打包（Nuitka standalone）后模块没有真实的 __file__，SQL 需要跟着
+    exe 目录一起分发，所以这里依次尝试：源码目录 → exe 目录 → RESOURCE_BASE。
+    """
+    dirs = []
+    try:
+        dirs.append(os.path.dirname(os.path.abspath(__file__)))
+    except NameError:
+        pass
+    try:
+        import sys
+        if getattr(sys, 'frozen', False) or '__compiled__' in globals():
+            base = os.path.dirname(os.path.abspath(sys.executable))
+            dirs.append(os.path.join(base, 'data', 'migrations'))
+    except Exception:                           # noqa: BLE001
+        pass
+    try:
+        from config import RESOURCE_BASE
+        dirs.append(os.path.join(RESOURCE_BASE, 'data', 'migrations'))
+    except Exception:                           # noqa: BLE001
+        pass
+    return dirs
+
+
+def _resolve_sql_dir() -> str:
+    for candidate in _sql_dirs():
+        try:
+            names = os.listdir(candidate)
+        except OSError:
+            continue
+        if any(n.endswith('.sql') for n in names):
+            return candidate
+    return _sql_dirs()[0] if _sql_dirs() else ''
+
+
+HERE = _sql_dirs()[0] if _sql_dirs() else ''
+SQL_DIR = _resolve_sql_dir()
 
 # (version, name, sql 文件名)
 MIGRATIONS: list[tuple[int, str, str]] = [
@@ -72,7 +110,7 @@ def apply_pending(conn: sqlite3.Connection) -> int:
     """
     _ensure_bookkeeping(conn)
     for version, name, filename in pending(conn):
-        path = os.path.join(HERE, filename)
+        path = os.path.join(SQL_DIR, filename)
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 script = f.read()

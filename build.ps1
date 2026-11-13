@@ -39,8 +39,8 @@ $nuitkaArgs = @(
     "--product-version=$Version",
     "--include-data-dir=stylesheet=stylesheet",
     "--include-data-dir=resources=resources",
-    "--include-data-dir=messages\templates=messages\templates",
-    "--include-data-files=messages\message.html=messages\message.html",
+    # SQL 迁移是运行时读取的外部文件，必须打进包
+    "--include-data-dir=data\migrations=data\migrations",
     "--output-dir=build",
     "--assume-yes-for-downloads",
     "--nofollow-import-to=pytest",
