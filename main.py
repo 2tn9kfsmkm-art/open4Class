@@ -91,7 +91,7 @@ def main():
     from ui.tokens import set_font_scale
     screen = app.primaryScreen()
     dpi_scale = (screen.logicalDotsPerInch() / 96.0) if screen else 1.0
-    set_font_scale(1.0 - max(0.0, dpi_scale - 2.5) * 0.3)
+    set_font_scale(1.0 - max(0.0, dpi_scale - 2.5) * 0.4)
 
     # 数据目录写入自检：写不进去时后面的备份/保存都会失败，
     # 提前记一笔日志，用户反馈问题时一眼能看到

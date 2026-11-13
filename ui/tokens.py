@@ -61,7 +61,7 @@ FONT_SCALE = 1.0
 
 def set_font_scale(scale: float) -> None:
     global FONT_SCALE
-    FONT_SCALE = max(0.75, min(1.0, float(scale)))
+    FONT_SCALE = max(0.72, min(1.0, float(scale)))
 
 
 def current_font_scale() -> float:
