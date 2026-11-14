@@ -3,7 +3,7 @@ name: build-release
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:        # 也可以在网页上手动跑一次
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,43 +14,77 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # 需要全部 tag 才能取版本号
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: 安装依赖
+      - name: 版本号
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}" -replace '^v', ''
+          if (-not $v) { $v = "0.0.0" }
+          "VERSION=$v" | Out-File -Append -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+          Write-Host "版本: $v"
+
+      - name: 安装 Python 依赖
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install nuitka ordered-set zstandard
 
-      - name: 编译（Nuitka standalone）
-        shell: cmd
-        run: build.bat
+      - name: Nuitka 编译
+        shell: pwsh
+        run: |
+          .\build.ps1 -Version "${{ steps.ver.outputs.VERSION }}"
+          if (-not (Test-Path "build\main.dist\ClassManager.exe")) {
+            Write-Error "编译产物缺失：build\main.dist\ClassManager.exe"
+            exit 1
+          }
+          Get-ChildItem build\main.dist | Select-Object -First 8 Name, Length
 
       - name: 安装 Inno Setup
-        run: choco install innosetup --no-progress -y
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 7\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { Write-Error "找不到 ISCC.exe"; exit 1 }
+          Write-Host "ISCC: $iscc"
+          "ISCC=$iscc" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
 
       - name: 生成安装包
-        shell: cmd
+        shell: pwsh
         run: |
-          set VERSION=${{ github.ref_name }}
-          set VERSION=%VERSION:v=%
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAPPVERSION=%VERSION% installer.iss
+          & $env:ISCC "/DAPPVERSION=${{ steps.ver.outputs.VERSION }}" installer.iss
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "ISCC 失败，退出码 $LASTEXITCODE"
+            exit 1
+          }
+          Get-ChildItem installer | Select-Object Name, Length
 
-      - name: 便携版压缩包
-        shell: cmd
+      - name: 便携版 zip + 校验值
+        shell: pwsh
         run: |
-          cd build
-          powershell Compress-Archive -Path main.dist\* -DestinationPath "..\installer\ClassManager-portable-${{ github.ref_name }}.zip" -Force
-
-      - name: 校验值
-        shell: cmd
-        run: |
-          cd installer
-          certutil -hashfile *.exe SHA256 > SHA256SUMS.txt
+          $exe = Get-ChildItem installer -Filter "ClassManager-Setup-*.exe" | Select-Object -First 1
+          if (-not $exe) { Write-Error "没找到安装包"; exit 1 }
+          $zip = "installer/ClassManager-portable-${{ github.ref_name }}.zip"
+          Compress-Archive -Path "build\main.dist\*" -DestinationPath $zip -Force
+          $lines = @()
+          foreach ($f in @($exe.FullName, (Resolve-Path $zip).Path)) {
+            $h = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+            $lines += "$h  $(Split-Path $f -Leaf)"
+          }
+          $lines | Out-File -FilePath "installer/SHA256SUMS.txt" -Encoding utf8
+          Get-Content "installer/SHA256SUMS.txt"
 
       - name: 发布到 Release
         uses: softprops/action-gh-release@v2
