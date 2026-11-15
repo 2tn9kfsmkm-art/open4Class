@@ -37,7 +37,7 @@ from services.loading import loadPool, wait_all
 from tools.PandasQModel import PandasQItemModel, q_read_csv
 from tools.qss2qt import setQss
 from config import *
-from config import load_user_settings, get_onduty_jobs
+from config import load_user_settings, get_onduty_jobs, school_logo_path
 from data.store import shared_store
 
 
@@ -95,8 +95,7 @@ class Main(wn_Main, QMainWindow):
         setQss(QSS_DIR + 'sidebar.qss', self.sidebar_wg)
 
         # Logo
-        logo = QPixmap(RESOURCE_DIR + 'logo.png')
-        self.icon_l.setPixmap(logo)
+        self.icon_l.setPixmap(QPixmap(school_logo_path()))
 
         # 侧栏最小宽度跟着字体走：300% 缩放下 24pt 的日期需要更宽的栏
         _fm = self.time_l.fontMetrics()
@@ -632,6 +631,10 @@ class Main(wn_Main, QMainWindow):
         if self.wn_AddApp.exec() == QDialog.Accepted:
             self.data.load(self.data.app_chain)
             wait_all(self.data)
+
+    def refresh_logo(self):
+        """设置里换过学校图标后，刷新侧栏底部那张图。"""
+        self.icon_l.setPixmap(QPixmap(school_logo_path()))
 
     def refresh_apps(self):
         """设置里改完应用链接后，刷新主界面的图标网格。"""

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
 )
 from PySide6.QtCore import Qt, QDate, Signal, QTimer
+from PySide6.QtGui import QPixmap, QIcon
 from pandas import DataFrame, read_csv
 import pandas as pd
 
@@ -956,6 +957,27 @@ class GeneralWidget(SettingsWidgetBase):
         layout.addRow('班级全名：', self.full_le)
         layout.addRow('学校名称：', self.school_le)
 
+        # 学校图标（显示在侧栏底部）
+        self._logo_pending = None      # 待保存的新图路径
+        self._logo_reset = False        # 是否要恢复默认
+        logo_row = QHBoxLayout()
+        self.logo_preview = QLabel()
+        self.logo_preview.setFixedSize(88, 88)
+        self.logo_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.logo_preview.setStyleSheet(
+            'border: 1px solid #E3E5E8; border-radius: 6px;')
+        logo_row.addWidget(self.logo_preview)
+        logo_col = QVBoxLayout()
+        self.logo_btn = QPushButton('选择图片…')
+        self.logo_btn.clicked.connect(self._choose_logo)
+        self.logo_reset_btn = QPushButton('恢复默认')
+        self.logo_reset_btn.clicked.connect(self._reset_logo)
+        logo_col.addWidget(self.logo_btn)
+        logo_col.addWidget(self.logo_reset_btn)
+        logo_row.addLayout(logo_col)
+        logo_row.addStretch(1)
+        layout.addRow('学校图标：', logo_row)
+
         btn_row = QHBoxLayout()
         self.reset_btn = QPushButton('重置')
         self.save_btn = QPushButton('保存')
@@ -1174,11 +1196,46 @@ class GeneralWidget(SettingsWidgetBase):
         if app is not None:
             app.quit()
 
+    def _choose_logo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '选择学校图标', '', '图片 (*.png *.jpg *.jpeg *.bmp)')
+        if not path:
+            return
+        self._logo_pending = path
+        self._logo_reset = False
+        pix = QPixmap(path)
+        if not pix.isNull():
+            self.logo_preview.setPixmap(pix.scaled(
+                84, 84, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation))
+
+    def _reset_logo(self):
+        self._logo_pending = None
+        self._logo_reset = True
+        self.logo_preview.setPixmap(self._scaled_default_logo())
+
+    def _scaled_default_logo(self):
+        from config import RESOURCE_DIR
+        pix = QPixmap(RESOURCE_DIR + 'logo.png')
+        return pix.scaled(84, 84, Qt.AspectRatioMode.KeepAspectRatio,
+                          Qt.TransformationMode.SmoothTransformation)
+
     def _load(self):
         cfg = load_user_settings()
         self.short_le.setText(cfg['class_short_name'])
         self.full_le.setText(cfg['class_full_name'])
         self.school_le.setText(cfg['school_name'])
+
+        from config import school_logo_path
+        self._logo_pending = None
+        self._logo_reset = False
+        pix = QPixmap(school_logo_path())
+        if pix.isNull():
+            pix = self._scaled_default_logo()
+        else:
+            pix = pix.scaled(84, 84, Qt.AspectRatioMode.KeepAspectRatio,
+                             Qt.TransformationMode.SmoothTransformation)
+        self.logo_preview.setPixmap(pix)
 
     def reset(self):
         self._load()
@@ -1190,8 +1247,29 @@ class GeneralWidget(SettingsWidgetBase):
         cfg['class_full_name'] = self.full_le.text().strip()
         cfg['school_name'] = self.school_le.text().strip()
         save_user_settings(cfg)
+
+        try:
+            from config import reset_school_logo, save_school_logo
+            if self._logo_pending:
+                save_school_logo(self._logo_pending)
+                self._logo_pending = None
+            elif self._logo_reset:
+                reset_school_logo()
+                self._logo_reset = False
+        except Exception as e:                  # noqa: BLE001
+            QMessageBox.warning(self, '图标保存失败', f'{e}')
+
         self.changed.emit()
         notify_saved(self)
+
+        node = self
+        for _ in range(8):
+            node = node.parent() if node is not None else None
+            if node is None:
+                break
+            if hasattr(node, 'refresh_logo'):
+                node.refresh_logo()
+                break
 
 
 

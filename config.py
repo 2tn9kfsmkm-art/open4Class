@@ -225,3 +225,39 @@ def get_today_weekday():
     except (TypeError, ValueError):
         return None
     return weekday if 1 <= weekday <= 7 else None
+
+
+# ---------------------------------------------------------------- 学校图标
+SCHOOL_LOGO_FILENAME = 'school_logo.png'
+
+
+def school_logo_path() -> str:
+    """侧栏底部显示的学校图标：用户导入过就用自定义的，否则用自带默认。"""
+    custom = os.path.join(FILE_DIR, SCHOOL_LOGO_FILENAME)
+    if os.path.exists(custom):
+        return custom
+    return os.path.join(RESOURCE_DIR, 'logo.png')
+
+
+def save_school_logo(src_path: str) -> str:
+    """把用户选的图片存成学校图标（统一缩放到 512 宽，保留透明通道）。"""
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QImage
+
+    img = QImage(src_path)
+    if img.isNull():
+        raise ValueError('无法读取这张图片')
+    if img.width() > 512:
+        img = img.scaled(512, 512, Qt.AspectRatioMode.KeepAspectRatio,
+                         Qt.TransformationMode.SmoothTransformation)
+    dest = os.path.join(FILE_DIR, SCHOOL_LOGO_FILENAME)
+    if not img.save(dest, 'PNG'):
+        raise OSError(f'保存失败：{dest}')
+    return dest
+
+
+def reset_school_logo() -> None:
+    """恢复自带的默认图标。"""
+    custom = os.path.join(FILE_DIR, SCHOOL_LOGO_FILENAME)
+    if os.path.exists(custom):
+        os.remove(custom)
