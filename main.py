@@ -50,6 +50,33 @@ def _acquire_mutex():
         return True                             # 拿不到就不阻止启动
 
 
+def _install_qt_chinese(app):
+    """让 Qt 自带的对话框（取色器、消息框按钮等）显示中文。"""
+    try:
+        import os
+        from PySide6.QtCore import QLibraryInfo, QTranslator
+
+        candidates = [
+            QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)]
+        # 打包后翻译文件被放在 exe 旁的 translations/ 里
+        try:
+            from config import RESOURCE_BASE
+            candidates.append(os.path.join(RESOURCE_BASE, 'translations'))
+        except Exception:                          # noqa: BLE001
+            pass
+        candidates.append(os.path.join(os.path.dirname(sys.executable), 'translations'))
+
+        for folder in candidates:
+            translator = QTranslator(app)
+            if translator.load('qtbase_zh_CN', folder):
+                app.installTranslator(translator)
+                app._qt_zh_translator = translator     # 防止被 GC
+                return True
+    except Exception:                              # noqa: BLE001
+        pass
+    return False
+
+
 def main():
 
     # Qt6 默认开启高 DPI 缩放（Qt5 默认关闭）。本机 175% 缩放下，
@@ -60,6 +87,7 @@ def main():
     os.environ.setdefault('QT_SCALE_FACTOR', '1')
 
     app = QApplication(sys.argv)
+    _install_qt_chinese(app)
     app.setWindowIcon(QIcon(RESOURCE_DIR + 'icon.png'))
 
     # ---- 多开限制 ----

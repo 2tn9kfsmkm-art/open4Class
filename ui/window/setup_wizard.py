@@ -11,7 +11,7 @@ from PySide6.QtCore import QTime
 
 from pandas import DataFrame, read_csv
 from PySide6.QtCore import QDate, Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtWidgets import (
     QTimeEdit,
     QAbstractItemView,
@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
     QDialog,
-    QFileDialog,
+    QFileDialog, QColorDialog,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -42,7 +42,6 @@ from PySide6.QtWidgets import (
 )
 
 from ui.component.schedule_editor import ScheduleEditor
-from ui.component.color_dialog import ThemeColorDialog, normalize_hex
 import bootstrap
 from config import CLASS_WEEKDAYS, DEFAULT_CLASS_ROWS, load_user_settings
 from ondutySpawn import (
@@ -216,15 +215,9 @@ class ClassInfoPage(_Page):
         # 主题色（可在设置里再改）
         self._theme = load_user_settings().get('theme_color', '#9B0D14')
         theme_row = QHBoxLayout()
-        self.theme_le = QLineEdit()
-        self.theme_le.setPlaceholderText('#RRGGBB')
-        self.theme_le.setMaxLength(7)
-        self.theme_le.setFixedWidth(110)
-        self.theme_le.setText(self._theme)
-        self.theme_le.editingFinished.connect(self._on_theme_text)
-        self.theme_btn = QPushButton('选择颜色…')
+        self.theme_btn = QPushButton(self._theme.upper())
+        self._paint_theme_btn(self._theme)
         self.theme_btn.clicked.connect(self._choose_theme)
-        theme_row.addWidget(self.theme_le)
         theme_row.addWidget(self.theme_btn)
         theme_row.addStretch(1)
         form.addRow('主题色：', theme_row)
@@ -288,17 +281,18 @@ class ClassInfoPage(_Page):
         self._logo_path = path
         self._refresh_logo_preview()
 
-    def _on_theme_text(self):
-        value = normalize_hex(self.theme_le.text())
-        if value:
-            self._theme = value
-            self.theme_le.setText(value)
+    def _paint_theme_btn(self, color: str):
+        self.theme_btn.setText(color.upper())
+        self.theme_btn.setStyleSheet(
+            f'QPushButton {{ background-color: {color}; color: white;'
+            f' border: none; border-radius: 4px; padding: 4px 14px; }}')
 
     def _choose_theme(self):
-        dlg = ThemeColorDialog(self._theme, self)
-        if dlg.exec() == ThemeColorDialog.DialogCode.Accepted:
-            self._theme = dlg.color()
-            self.theme_le.setText(self._theme)
+        color = QColorDialog.getColor(QColor(self._theme), self, '选择主题色')
+        if not color.isValid():
+            return
+        self._theme = color.name().upper()
+        self._paint_theme_btn(self._theme)
 
     def collect(self):
         return {'info': {
