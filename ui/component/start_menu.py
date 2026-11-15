@@ -7,6 +7,8 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
+from ui.tokens import COLORS
+
 _ITEMS = ('设置', '最小化', '退出程序')
 
 
@@ -53,7 +55,10 @@ class StartMenu(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(112, 12, 18, 250))  # 比侧栏深一档，不压太黑
+        # 跟随主题色：比侧栏主色再深一档，避免和背景糊在一起
+        color = QColor(COLORS['primary-deep'])
+        color.setAlpha(250)
+        painter.setBrush(color)
         painter.drawRect(self.rect())
 
     def hideEvent(self, event):
