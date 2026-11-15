@@ -5,6 +5,7 @@ from datetime import datetime
 from functools import partial
 
 from PySide6.QtWidgets import (
+    QSizePolicy,
     QApplication, QMainWindow, QWidget, QMessageBox, QDialog, QMenu, QLabel,
     QHeaderView, QPushButton,
 )
@@ -639,24 +640,27 @@ class Main(wn_Main, QMainWindow):
         self._fit_logo()
 
     def _fit_logo(self):
-        """让学校图标占满侧栏宽度。
+        """让学校图标铺满侧栏宽度（只调高度，绝不动宽度约束）。
 
-        icon_l 是 RatioPixmapQLabel：它把 pixmap 缩放成「标签自身尺寸」，
-        所以关键是先把这个标签的宽高设对，否则布局只给它 100x100 的最小尺寸。
+        icon_l 是 RatioPixmapQLabel，会把 pixmap 缩放成标签自身尺寸；
+        而标签宽度由布局决定 = 侧栏宽度。这里只把高度按原图比例设好，
+        宽度交给布局，避免反过来把侧栏挤窄。
         """
         if self._logo_source.isNull():
             return
         layout = self.sidebar_wg.layout()
         margins = layout.contentsMargins() if layout is not None else None
         pad = (margins.left() + margins.right()) if margins is not None else 16
-        width = max(80, self.sidebar_wg.width() - pad)
+        width = max(self.sidebar_wg.minimumWidth(), self.sidebar_wg.width()) - pad
+        width = max(80, width)
         height = int(width * self._logo_source.height() / max(1, self._logo_source.width()))
         height = max(40, min(height, 200))
 
-        self.icon_l.setMinimumWidth(width)
-        self.icon_l.setMaximumWidth(width)
-        self.icon_l.setMinimumHeight(height)
-        self.icon_l.setMaximumHeight(height)
+        self.icon_l.setMinimumWidth(0)
+        self.icon_l.setMaximumWidth(16777215)          # QWIDGETSIZE_MAX，等于不限制
+        self.icon_l.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.icon_l.setFixedHeight(height)
         self.icon_l.setPixmap(self._logo_source)
         self.icon_l.updatePixmap()
 
