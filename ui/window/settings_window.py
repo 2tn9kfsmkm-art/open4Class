@@ -9,10 +9,10 @@ from PySide6.QtWidgets import (
     QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QFrame,
     QAbstractItemView, QHeaderView, QComboBox, QSizePolicy, QTextEdit,
-    QInputDialog,
+    QInputDialog, QColorDialog,
 )
 from PySide6.QtCore import Qt, QDate, Signal, QTimer
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtGui import QPixmap, QIcon, QColor
 from pandas import DataFrame, read_csv
 import pandas as pd
 
@@ -957,6 +957,18 @@ class GeneralWidget(SettingsWidgetBase):
         layout.addRow('班级全名：', self.full_le)
         layout.addRow('学校名称：', self.school_le)
 
+        # 主题色
+        self._theme_pending = None
+        theme_row = QHBoxLayout()
+        self.theme_btn = QPushButton('选择颜色…')
+        self.theme_btn.clicked.connect(self._choose_theme)
+        self.theme_reset_btn = QPushButton('恢复默认')
+        self.theme_reset_btn.clicked.connect(self._reset_theme)
+        theme_row.addWidget(self.theme_btn)
+        theme_row.addWidget(self.theme_reset_btn)
+        theme_row.addStretch(1)
+        layout.addRow('主题色：', theme_row)
+
         # 学校图标（显示在侧栏底部）
         self._logo_pending = None      # 待保存的新图路径
         self._logo_reset = False        # 是否要恢复默认
@@ -1196,6 +1208,24 @@ class GeneralWidget(SettingsWidgetBase):
         if app is not None:
             app.quit()
 
+    def _paint_theme_btn(self, color: str):
+        self.theme_btn.setText(color.upper())
+        self.theme_btn.setStyleSheet(
+            f'QPushButton {{ background-color: {color}; color: white;'
+            f' border: none; border-radius: 4px; padding: 4px 14px; }}')
+
+    def _choose_theme(self):
+        current = QColor(self._theme_pending or load_user_settings().get('theme_color', '#9B0D14'))
+        color = QColorDialog.getColor(current, self, '选择主题色')
+        if not color.isValid():
+            return
+        self._theme_pending = color.name().upper()
+        self._paint_theme_btn(self._theme_pending)
+
+    def _reset_theme(self):
+        self._theme_pending = '#9B0D14'
+        self._paint_theme_btn(self._theme_pending)
+
     def _choose_logo(self):
         path, _ = QFileDialog.getOpenFileName(
             self, '选择学校图标', '', '图片 (*.png *.jpg *.jpeg *.bmp)')
@@ -1226,6 +1256,9 @@ class GeneralWidget(SettingsWidgetBase):
         self.full_le.setText(cfg['class_full_name'])
         self.school_le.setText(cfg['school_name'])
 
+        self._theme_pending = None
+        self._paint_theme_btn(cfg.get('theme_color', '#9B0D14'))
+
         from config import school_logo_path
         self._logo_pending = None
         self._logo_reset = False
@@ -1246,6 +1279,8 @@ class GeneralWidget(SettingsWidgetBase):
         cfg['class_short_name'] = self.short_le.text().strip()
         cfg['class_full_name'] = self.full_le.text().strip()
         cfg['school_name'] = self.school_le.text().strip()
+        if self._theme_pending:
+            cfg['theme_color'] = self._theme_pending
         save_user_settings(cfg)
 
         try:
@@ -1268,6 +1303,8 @@ class GeneralWidget(SettingsWidgetBase):
             if node is None:
                 break
             if hasattr(node, 'refresh_logo'):
+                if hasattr(node, 'apply_theme'):
+                    node.apply_theme()
                 node.refresh_logo()
                 break
 

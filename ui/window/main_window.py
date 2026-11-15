@@ -634,6 +634,21 @@ class Main(wn_Main, QMainWindow):
             self.data.load(self.data.app_chain)
             wait_all(self.data)
 
+    def apply_theme(self):
+        """主题色改变后重新渲染样式（全局 QSS + 各控件的局部 QSS）。"""
+        from ui.tokens import set_primary
+        cfg = load_user_settings()
+        set_primary(cfg.get('theme_color', '#9B0D14'))
+
+        setQss(QSS_DIR + 'mainpage.qss', QApplication.instance())
+        setQss(QSS_DIR + 'title.qss', self.title_l)
+        setQss(QSS_DIR + 'tableview.qss', self.onduty_tv)
+        setQss(QSS_DIR + 'tableview.qss', self.classlist_tv,
+               extra='QTableView::item { padding: 6px 5px; }')
+        setQss(QSS_DIR + 'applink.qss', self.applink_tv)
+        setQss(QSS_DIR + 'sidebar.qss', self.sidebar_wg)
+        self.update()
+
     def refresh_logo(self):
         """设置里换过学校图标后，刷新侧栏底部那张图。"""
         self._logo_source = QPixmap(school_logo_path())

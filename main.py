@@ -111,6 +111,9 @@ def main():
         except Exception:                       # noqa: BLE001
             pass
 
+    from config import load_user_settings
+    from ui.tokens import set_primary
+    set_primary(load_user_settings().get('theme_color', '#9B0D14'))
     setQss(QSS_DIR + 'mainpage.qss', app)
 
     # 首次使用：先确认数据是否就绪，再创建主窗口。

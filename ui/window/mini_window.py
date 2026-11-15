@@ -75,6 +75,13 @@ def _nearest_countdown(now: datetime, countdowns) -> str:
     return best
 
 
+def _tint(hex_color: str, alpha: int) -> QColor:
+    """主色 + 透明度，用于悬浮层自绘背景，跟随主题色。"""
+    c = QColor(hex_color)
+    c.setAlpha(alpha)
+    return c
+
+
 class TopBar(QWidget):
     """顶部长条：左时间、中课表、右其他信息。"""
 
@@ -136,7 +143,7 @@ class TopBar(QWidget):
 
         fraction = max(0.0, min(1.0, self._progress))
         bar_w = int(self.width() * fraction)
-        painter.setBrush(QColor(150, 20, 26, 205))
+        painter.setBrush(_tint(COLORS['primary'], 205))
         painter.drawRect(0, 0, bar_w, self.height())
         painter.setBrush(QColor(120, 120, 126, 190))
         painter.drawRect(bar_w, 0, self.width() - bar_w, self.height())
@@ -220,7 +227,7 @@ class EntryChip(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(155, 13, 20, 190))
+        painter.setBrush(_tint(COLORS['primary'], 190))
         painter.drawRoundedRect(self.rect(), 16, 16)
 
     def mousePressEvent(self, event: QMouseEvent):

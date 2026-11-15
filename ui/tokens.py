@@ -93,3 +93,44 @@ def render(qss: str) -> str:
     for name in sorted(merged, key=len, reverse=True):
         qss = qss.replace('@' + name, merged[name])
     return qss
+
+
+# ---------------------------------------------------------------- 主题色
+DEFAULT_PRIMARY = '#9B0D14'
+
+
+def _mix(hex_a: str, hex_b: str, ratio: float) -> str:
+    """把 a 向 b 混合 ratio（0..1），返回 #RRGGBB。"""
+    a = hex_a.lstrip('#')
+    b = hex_b.lstrip('#')
+    out = []
+    for i in (0, 2, 4):
+        va = int(a[i:i + 2], 16)
+        vb = int(b[i:i + 2], 16)
+        out.append(round(va + (vb - va) * ratio))
+    return '#%02X%02X%02X' % tuple(out)
+
+
+def derive_palette(base: str) -> dict:
+    """由主色推导整套同色系（浅底、边框、按下态等）。"""
+    return {
+        'primary': base,
+        'primary-hover': _mix(base, '#000000', 0.12),
+        'primary-pressed': _mix(base, '#000000', 0.22),
+        'primary-deep': _mix(base, '#000000', 0.42),
+        'primary-soft': _mix(base, '#FFFFFF', 0.92),
+        'primary-tint': _mix(base, '#FFFFFF', 0.97),
+        'primary-muted': _mix(base, '#FFFFFF', 0.72),
+        'scrollbar': _mix(base, '#FFFFFF', 0.62),
+        'tab-bg': _mix(base, '#FFFFFF', 0.95),
+    }
+
+
+def set_primary(hex_color: str) -> None:
+    """切换主题主色，并同步所有派生色。"""
+    try:
+        if not hex_color or not hex_color.startswith('#'):
+            hex_color = DEFAULT_PRIMARY
+        COLORS.update(derive_palette(hex_color.upper()))
+    except Exception:                           # noqa: BLE001
+        COLORS.update(derive_palette(DEFAULT_PRIMARY))

@@ -167,6 +167,7 @@ DEFAULT_USER_SETTINGS = {
     'onduty_daily_template': ['扫', '扫', '擦', '排', '理'],
     'lesson_times': DEFAULT_LESSON_TIMES,
     'countdowns': DEFAULT_COUNTDOWNS,
+    'theme_color': '#9B0D14',
 }
 
 
