@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QDateEdit, QTextBrowser, QTabWidget, QMessageBox, QFileDialog, QApplication,
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem, QFrame,
     QAbstractItemView, QHeaderView, QComboBox, QSizePolicy, QTextEdit,
-    QInputDialog, QColorDialog,
+    QInputDialog,
 )
 from PySide6.QtCore import Qt, QDate, Signal, QTimer
 from PySide6.QtGui import QPixmap, QIcon, QColor
@@ -17,6 +17,7 @@ from pandas import DataFrame, read_csv
 import pandas as pd
 
 import bootstrap
+from ui.component.color_dialog import ThemeColorDialog, normalize_hex
 from data.store import shared_store
 from ui.component.dropable_table import (
     dragdropQTableView, QComboBoxDelegate, QNoDelegate,
@@ -960,10 +961,16 @@ class GeneralWidget(SettingsWidgetBase):
         # 主题色
         self._theme_pending = None
         theme_row = QHBoxLayout()
+        self.theme_le = QLineEdit()
+        self.theme_le.setPlaceholderText('#RRGGBB')
+        self.theme_le.setMaxLength(7)
+        self.theme_le.setFixedWidth(120)
+        self.theme_le.editingFinished.connect(self._on_theme_text)
         self.theme_btn = QPushButton('选择颜色…')
         self.theme_btn.clicked.connect(self._choose_theme)
         self.theme_reset_btn = QPushButton('恢复默认')
         self.theme_reset_btn.clicked.connect(self._reset_theme)
+        theme_row.addWidget(self.theme_le)
         theme_row.addWidget(self.theme_btn)
         theme_row.addWidget(self.theme_reset_btn)
         theme_row.addStretch(1)
@@ -1209,17 +1216,29 @@ class GeneralWidget(SettingsWidgetBase):
             app.quit()
 
     def _paint_theme_btn(self, color: str):
-        self.theme_btn.setText(color.upper())
+        if hasattr(self, 'theme_le'):
+            self.theme_le.setText(color.upper())
+        self.theme_btn.setText('选择颜色…')
         self.theme_btn.setStyleSheet(
             f'QPushButton {{ background-color: {color}; color: white;'
             f' border: none; border-radius: 4px; padding: 4px 14px; }}')
 
-    def _choose_theme(self):
-        current = QColor(self._theme_pending or load_user_settings().get('theme_color', '#9B0D14'))
-        color = QColorDialog.getColor(current, self, '选择主题色')
-        if not color.isValid():
+    def _on_theme_text(self):
+        value = normalize_hex(self.theme_le.text())
+        if not value:
+            self.theme_le.setText(self._theme_pending or
+                                  load_user_settings().get('theme_color', '#9B0D14'))
             return
-        self._theme_pending = color.name().upper()
+        self._theme_pending = value
+        self._paint_theme_btn(value)
+
+    def _choose_theme(self):
+        current = self._theme_pending or load_user_settings().get('theme_color', '#9B0D14')
+        dlg = ThemeColorDialog(current, self)
+        if dlg.exec() != ThemeColorDialog.DialogCode.Accepted:
+            return
+        self._theme_pending = dlg.color()
+        self.theme_le.setText(self._theme_pending)
         self._paint_theme_btn(self._theme_pending)
 
     def _reset_theme(self):

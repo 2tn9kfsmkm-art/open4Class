@@ -11,6 +11,7 @@ from PySide6.QtCore import QTime
 
 from pandas import DataFrame, read_csv
 from PySide6.QtCore import QDate, Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QTimeEdit,
     QAbstractItemView,
@@ -41,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.component.schedule_editor import ScheduleEditor
+from ui.component.color_dialog import ThemeColorDialog, normalize_hex
 import bootstrap
 from config import CLASS_WEEKDAYS, DEFAULT_CLASS_ROWS, load_user_settings
 from ondutySpawn import (
@@ -210,6 +212,38 @@ class ClassInfoPage(_Page):
         form.addRow('学校名称：', self.school_le)
         form.addRow('班级全名：', self.full_le)
         form.addRow('班级短名：', self.short_le)
+
+        # 主题色（可在设置里再改）
+        self._theme = load_user_settings().get('theme_color', '#9B0D14')
+        theme_row = QHBoxLayout()
+        self.theme_le = QLineEdit()
+        self.theme_le.setPlaceholderText('#RRGGBB')
+        self.theme_le.setMaxLength(7)
+        self.theme_le.setFixedWidth(110)
+        self.theme_le.setText(self._theme)
+        self.theme_le.editingFinished.connect(self._on_theme_text)
+        self.theme_btn = QPushButton('选择颜色…')
+        self.theme_btn.clicked.connect(self._choose_theme)
+        theme_row.addWidget(self.theme_le)
+        theme_row.addWidget(self.theme_btn)
+        theme_row.addStretch(1)
+        form.addRow('主题色：', theme_row)
+
+        # 学校图标（显示在侧栏底部）
+        self._logo_path = None
+        logo_row = QHBoxLayout()
+        self.logo_preview = QLabel()
+        self.logo_preview.setFixedSize(72, 72)
+        self.logo_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.logo_preview.setStyleSheet(
+            'border: 1px solid #DDDDDD; border-radius: 6px;')
+        self.logo_btn = QPushButton('选择图片…')
+        self.logo_btn.clicked.connect(self._choose_logo)
+        logo_row.addWidget(self.logo_preview)
+        logo_row.addWidget(self.logo_btn)
+        logo_row.addStretch(1)
+        form.addRow('学校图标：', logo_row)
+
         self.body.addLayout(form)
 
         hint = QLabel('例：市西中学 / 高三（8）班 / 高三八班。短名用在窗口标题，建议不超过 10 个字。')
@@ -222,6 +256,7 @@ class ClassInfoPage(_Page):
         self.school_le.setText(cfg.get('school_name', ''))
         self.full_le.setText(cfg.get('class_full_name', ''))
         self.short_le.setText(cfg.get('class_short_name', ''))
+        self._refresh_logo_preview()
 
     def validate(self):
         if not self.school_le.text().strip():
@@ -235,12 +270,45 @@ class ClassInfoPage(_Page):
             return '班级短名请控制在 10 个字以内'
         return None
 
+    def _refresh_logo_preview(self):
+        from config import RESOURCE_DIR, school_logo_path
+        src = self._logo_path or school_logo_path()
+        pix = QPixmap(src)
+        if pix.isNull():
+            pix = QPixmap(RESOURCE_DIR + 'logo.png')
+        self.logo_preview.setPixmap(pix.scaled(
+            68, 68, Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation))
+
+    def _choose_logo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, '选择学校图标', '', '图片 (*.png *.jpg *.jpeg *.bmp)')
+        if not path:
+            return
+        self._logo_path = path
+        self._refresh_logo_preview()
+
+    def _on_theme_text(self):
+        value = normalize_hex(self.theme_le.text())
+        if value:
+            self._theme = value
+            self.theme_le.setText(value)
+
+    def _choose_theme(self):
+        dlg = ThemeColorDialog(self._theme, self)
+        if dlg.exec() == ThemeColorDialog.DialogCode.Accepted:
+            self._theme = dlg.color()
+            self.theme_le.setText(self._theme)
+
     def collect(self):
         return {'info': {
             'school_name': self.school_le.text().strip(),
-            'class_full_name': self.full_le.text().strip(),
+            'class_full_name': self.class_full_name_now(),
             'class_short_name': self.short_le.text().strip(),
-        }}
+        }, 'theme_color': self._theme, 'logo_path': self._logo_path}
+
+    def class_full_name_now(self):
+        return self.full_le.text().strip()
 
 
 # ============================================================
@@ -1014,6 +1082,23 @@ class SetupWizard(QDialog):
         except Exception as e:
             QMessageBox.warning(self, '保存失败', f'{e}')
             return
+
+        # 主题色与学校图标（失败不影响主流程）
+        try:
+            from config import save_school_logo, save_user_settings
+            cfg = load_user_settings()
+            theme = self.data.get('theme_color')
+            if theme:
+                cfg['theme_color'] = theme
+                save_user_settings(cfg)
+                from ui.tokens import set_primary
+                set_primary(theme)
+            logo = self.data.get('logo_path')
+            if logo:
+                save_school_logo(logo)
+        except Exception as e:                  # noqa: BLE001
+            print(f'[wizard] 主题/图标保存失败: {e!r}')
+
         self.accept()
 
     def _on_cancel(self):
