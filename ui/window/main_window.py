@@ -94,8 +94,9 @@ class Main(wn_Main, QMainWindow):
         setQss(QSS_DIR + 'applink.qss', self.applink_tv)
         setQss(QSS_DIR + 'sidebar.qss', self.sidebar_wg)
 
-        # Logo
-        self.icon_l.setPixmap(QPixmap(school_logo_path()))
+        # Logo：记住原图，显示时按侧栏宽度等比拉伸
+        self._logo_source = QPixmap(school_logo_path())
+        self._fit_logo()
 
         # 侧栏最小宽度跟着字体走：300% 缩放下 24pt 的日期需要更宽的栏
         _fm = self.time_l.fontMetrics()
@@ -634,7 +635,24 @@ class Main(wn_Main, QMainWindow):
 
     def refresh_logo(self):
         """设置里换过学校图标后，刷新侧栏底部那张图。"""
-        self.icon_l.setPixmap(QPixmap(school_logo_path()))
+        self._logo_source = QPixmap(school_logo_path())
+        self._fit_logo()
+
+    def _fit_logo(self):
+        """把学校图标按侧栏宽度等比缩放（高度上限 200，避免挤掉上面的内容）。"""
+        if self._logo_source.isNull():
+            return
+        width = max(80, self.sidebar_wg.width())
+        pix = self._logo_source.scaledToWidth(
+            width, Qt.TransformationMode.SmoothTransformation)
+        if pix.height() > 200:
+            pix = pix.scaledToHeight(
+                200, Qt.TransformationMode.SmoothTransformation)
+        self.icon_l.setPixmap(pix)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_logo()
 
     def refresh_apps(self):
         """设置里改完应用链接后，刷新主界面的图标网格。"""
