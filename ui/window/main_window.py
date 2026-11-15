@@ -639,16 +639,26 @@ class Main(wn_Main, QMainWindow):
         self._fit_logo()
 
     def _fit_logo(self):
-        """把学校图标按侧栏宽度等比缩放（高度上限 200，避免挤掉上面的内容）。"""
+        """让学校图标占满侧栏宽度。
+
+        icon_l 是 RatioPixmapQLabel：它把 pixmap 缩放成「标签自身尺寸」，
+        所以关键是先把这个标签的宽高设对，否则布局只给它 100x100 的最小尺寸。
+        """
         if self._logo_source.isNull():
             return
-        width = max(80, self.sidebar_wg.width())
-        pix = self._logo_source.scaledToWidth(
-            width, Qt.TransformationMode.SmoothTransformation)
-        if pix.height() > 200:
-            pix = pix.scaledToHeight(
-                200, Qt.TransformationMode.SmoothTransformation)
-        self.icon_l.setPixmap(pix)
+        layout = self.sidebar_wg.layout()
+        margins = layout.contentsMargins() if layout is not None else None
+        pad = (margins.left() + margins.right()) if margins is not None else 16
+        width = max(80, self.sidebar_wg.width() - pad)
+        height = int(width * self._logo_source.height() / max(1, self._logo_source.width()))
+        height = max(40, min(height, 200))
+
+        self.icon_l.setMinimumWidth(width)
+        self.icon_l.setMaximumWidth(width)
+        self.icon_l.setMinimumHeight(height)
+        self.icon_l.setMaximumHeight(height)
+        self.icon_l.setPixmap(self._logo_source)
+        self.icon_l.updatePixmap()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
