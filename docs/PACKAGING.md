@@ -110,6 +110,11 @@ Inno Setup 自动生成卸载器，安装后在两个地方可见：
 
 ## 3. 发布
 
+> **GitHub Actions 已停用**：CI 里 Nuitka 编译 + Inno 打包多次失败且难以在
+> 本地复现，目前改为**本地编译、手动上传 Release**。原 workflow 见 git 历史
+> （`.github/workflows/release.yml`），修好后再恢复。
+
+
 打 tag 并推送（需要时手动）：
 
 ```powershell
