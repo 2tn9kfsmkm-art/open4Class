@@ -187,6 +187,20 @@ def main():
     mainwindow = Main()
     holder['win'] = mainwindow
     mainwindow.showMaximized()
+
+    # 再补一次：某些高 DPI 组合下首次 showMaximized 会被布局的最小尺寸顶掉，
+    # 等事件循环跑起来后再强制最大化一次，并把实际状态写进日志。
+    def _force_maximize():
+        mainwindow.showMaximized()
+        screen = mainwindow.screen()
+        log('startup',
+            f'maximized={mainwindow.isMaximized()} '
+            f'size={mainwindow.width()}x{mainwindow.height()} '
+            f'screen={screen.availableGeometry().width()}x{screen.availableGeometry().height()} '
+            f'min={mainwindow.minimumSizeHint().width()}x{mainwindow.minimumSizeHint().height()}')
+
+    from PySide6.QtCore import QTimer as _QTimer
+    _QTimer.singleShot(0, _force_maximize)
     _check_request()
 
     app.exec()
