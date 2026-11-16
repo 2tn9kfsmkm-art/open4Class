@@ -32,6 +32,10 @@ if ($pyMinor -ge 13 -and $Compiler -eq "mingw") {
 
 if (Test-Path build) { Remove-Item build -Recurse -Force }
 
+# Qt 自带翻译（让取色器等系统对话框显示中文）
+$transDir = (& python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))").Trim()
+Write-Host "[build] Qt translations: $transDir"
+
 $nuitkaArgs = @(
     "-m", "nuitka", "main.py",
     "--standalone",
@@ -56,10 +60,6 @@ $nuitkaArgs = @(
     "--nofollow-import-to=pytest",
     "--remove-output"
 )
-
-# Qt 自带翻译（让取色器等系统对话框显示中文）
-$transDir = (& python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))").Trim()
-Write-Host "[build] Qt translations: $transDir"
 
 Write-Host "[build] compiling with MSVC (需要 VS 2022 Build Tools)..."
 & python @nuitkaArgs
