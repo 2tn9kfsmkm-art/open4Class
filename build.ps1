@@ -16,6 +16,14 @@ if (-not $Version) {
 if (-not $Version) { $Version = "0.0.0" }
 Write-Host "[build] version: $Version"
 
+# Windows 版本资源只认数字：1.0.0-beta.1 -> 1.0.0.0
+$numeric = [regex]::Match($Version, '^\d+(\.\d+){0,3}').Value
+if (-not $numeric) { $numeric = "1.0.0" }
+$parts = $numeric.Split('.')
+while ($parts.Count -lt 4) { $parts += '0' }
+$fileVersion = ($parts[0..3] -join '.')
+Write-Host "[build] file-version: $fileVersion"
+
 $pyMinor = (& python -c "import sys; print(sys.version_info.minor)").Trim()
 Write-Host "[build] python 3.$pyMinor"
 if ($pyMinor -ge 13 -and $Compiler -eq "mingw") {
@@ -35,8 +43,8 @@ $nuitkaArgs = @(
     "--company-name=Shixi High School",
     "--product-name=ClassManager",
     "--file-description=ClassManager",
-    "--file-version=$Version",
-    "--product-version=$Version",
+    "--file-version=$fileVersion",
+    "--product-version=$fileVersion",
     "--include-data-dir=stylesheet=stylesheet",
     "--include-data-dir=resources=resources",
     # SQL 迁移是运行时读取的外部文件，必须打进包

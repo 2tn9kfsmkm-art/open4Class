@@ -8,7 +8,7 @@
 ; ============================================================
 
 #ifndef APPVERSION
-  #define APPVERSION "0.40.2"
+  #define APPVERSION "1.0.0-beta.1"
 #endif
 
 #define APPNAME      "班级管理系统"
