@@ -491,9 +491,17 @@ class Main(wn_Main, QMainWindow):
         dlg.setModal(False)                 # 明确非模态
         dlg.changed.connect(self._on_settings_changed)
         self._settings_dlg = dlg            # 持有引用，避免被回收
+        dlg.finished.connect(self._drop_settings_dlg)
         dlg.show()
         dlg.raise_()
         dlg.activateWindow()
+
+    def _drop_settings_dlg(self, _result=0):
+        """设置窗口关闭后真正销毁，否则每开一次就多留一份（8 个 Tab）。"""
+        dlg = getattr(self, '_settings_dlg', None)
+        self._settings_dlg = None
+        if dlg is not None:
+            dlg.deleteLater()
 
     def _on_settings_changed(self, keys: set):
         for k in keys:
@@ -531,6 +539,8 @@ class Main(wn_Main, QMainWindow):
         names = self.data['stu_model']._df['name'].tolist()
         self.wn_random = wn_random(data=names)
         self.wn_random.setModal(False)      # 非模态：开着也能操作主界面
+        self.wn_random.finished.connect(
+            lambda _=0, d=self.wn_random: d.deleteLater())
         self.wn_random.show()
         self.wn_random.raise_()
 
@@ -562,10 +572,12 @@ class Main(wn_Main, QMainWindow):
                     on_save=_save_today_classlist,
                     default_simple=True, show_size=show_size,
                     row_ops=True)                       # ← 允许加/删行
-            self.wn_classlist.setModal(False)
-            self.wn_classlist.finished.connect(self._after_classlist_edit)
-            self.wn_classlist.show()
-            self.wn_classlist.raise_()
+        self.wn_classlist.finished.connect(
+            lambda _=0, d=self.wn_classlist: d.deleteLater())
+        self.wn_classlist.setModal(False)
+        self.wn_classlist.finished.connect(self._after_classlist_edit)
+        self.wn_classlist.show()
+        self.wn_classlist.raise_()
 
     def _after_classlist_edit(self, _result=0):
         self.data.classlist_chain.play(self)
@@ -616,6 +628,8 @@ class Main(wn_Main, QMainWindow):
                 col_min_width=220,
                 on_save=_save_onduty_from_editor)
 
+        self.wn_Onduty.finished.connect(
+            lambda _=0, d=self.wn_Onduty: d.deleteLater())
         self.wn_Onduty.setModal(False)
         self.wn_Onduty.finished.connect(self._after_onduty_edit)
         self.wn_Onduty.show()
@@ -692,8 +706,9 @@ class Main(wn_Main, QMainWindow):
             print(f'[apps] 刷新失败: {e!r}')
 
     def openWn_Message(self):
-        self.wn_Message = wn_Message(self)
-        self.wn_Message.exec()
+        dlg = wn_Message(self)
+        dlg.finished.connect(lambda _=0, d=dlg: d.deleteLater())
+        dlg.exec()
         self.data.load(self.data.message_chain)
         wait_all(self.data)
 
