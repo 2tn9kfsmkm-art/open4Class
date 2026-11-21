@@ -192,7 +192,15 @@ def main():
     # 再补一次：某些高 DPI 组合下首次 showMaximized 会被布局的最小尺寸顶掉，
     # 等事件循环跑起来后再强制最大化一次，并把实际状态写进日志。
     def _force_maximize():
+        # 与「从悬浮层恢复」走同一条路径：Qt 的 showMaximized 在启动早期
+        # 偶尔会被 Windows 的初始放置覆盖（状态是最大化但尺寸没铺满），
+        # 这里补一次 Win32 ShowWindow(SW_MAXIMIZE) 才真正生效。
         mainwindow.showMaximized()
+        try:
+            from ui.component.winutil import force_foreground
+            force_foreground(mainwindow, maximize=True)
+        except Exception as e:                  # noqa: BLE001
+            log('startup', f'force_foreground 失败: {e!r}')
         screen = mainwindow.screen()
         avail = screen.availableGeometry()
         geo = screen.geometry()
