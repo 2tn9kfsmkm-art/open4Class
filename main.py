@@ -12,6 +12,7 @@ import sys
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 import bootstrap
@@ -193,13 +194,24 @@ def main():
     def _force_maximize():
         mainwindow.showMaximized()
         screen = mainwindow.screen()
+        avail = screen.availableGeometry()
+        geo = screen.geometry()
         log('startup',
             f'maximized={mainwindow.isMaximized()} '
-            f'size={mainwindow.width()}x{mainwindow.height()} '
-            f'screen={screen.availableGeometry().width()}x{screen.availableGeometry().height()} '
-            f'min={mainwindow.minimumSizeHint().width()}x{mainwindow.minimumSizeHint().height()}')
+            f'win={mainwindow.width()}x{mainwindow.height()} '
+            f'frame={mainwindow.frameGeometry().width()}x{mainwindow.frameGeometry().height()} '
+            f'avail={avail.width()}x{avail.height()} screen={geo.width()}x{geo.height()} '
+            f'dpr={screen.devicePixelRatio()} dpi={screen.logicalDotsPerInch():.0f} '
+            f'min={mainwindow.minimumSizeHint().width()}x{mainwindow.minimumSizeHint().height()} '
+            f'screens={len(QGuiApplication.screens())}')
 
-    from PySide6.QtCore import QTimer as _QTimer
+        # 兜底：明明最大化了却明显小于可用区域时，直接贴到可用区域
+        gap_w = avail.width() - mainwindow.frameGeometry().width()
+        gap_h = avail.height() - mainwindow.frameGeometry().height()
+        if gap_w > 4 or gap_h > 4:
+            log('startup', f'尺寸不匹配(w差{gap_w},h差{gap_h})，强制铺满可用区域')
+            mainwindow.setGeometry(avail)
+
     _QTimer.singleShot(0, _force_maximize)
     _check_request()
 
