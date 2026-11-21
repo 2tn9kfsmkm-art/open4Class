@@ -220,7 +220,7 @@ def main():
             log('startup', f'尺寸不匹配(w差{gap_w},h差{gap_h})，强制铺满可用区域')
             mainwindow.setGeometry(avail)
 
-    _QTimer.singleShot(0, _force_maximize)
+    QTimer.singleShot(0, _force_maximize)
     _check_request()
 
     app.exec()
