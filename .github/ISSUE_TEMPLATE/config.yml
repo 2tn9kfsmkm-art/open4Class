@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用手册（安装 / 向导 / 设置 / 常见问题）
+    url: https://github.com/2tn9kfsmkm-art/open4Class/blob/main/user-manual.pdf
+    about: 先在这里找一下，很多问题第 8 章已经写了
+  - name: 报告安全问题（私有渠道）
+    url: https://github.com/2tn9kfsmkm-art/open4Class/security/advisories/new
+    about: 涉及数据泄露、安装包被篡改等，请不要开公开 issue

@@ -1,0 +1,82 @@
+name: Bug 报告
+description: 程序崩溃、显示不对、按钮没反应等
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量填全下面几项——信息不足时排查要多来回好几轮。
+
+        ⚠️ 截图和日志里如果有**真实的学生姓名 / 照片 / 课表**，请打码或换成
+        「张三、李四」这样的假名。学生隐私比排查速度重要。
+
+  - type: input
+    id: version
+    attributes:
+      label: 程序版本
+      description: 安装包文件名里的数字，或设置 → 通用 里显示的内容
+      placeholder: 例如 1.0.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how
+    attributes:
+      label: 怎么运行的
+      options:
+        - 用 Setup 安装后打开
+        - 直接运行 build 出来的 exe
+        - 从源码 python main.py
+        - 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 系统与屏幕
+      description: Windows 版本 + 显示缩放比例；教室一体机请写型号（如希沃）
+      placeholder: 例如 Windows 11 23H2 / 175% / 希沃 F75EA
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从打开程序开始，一步步写你点了什么
+      placeholder: |
+        1. 打开程序
+        2. 点侧栏学校图标进设置
+        3. 倒计时页加一条，保存
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望的结果 / 实际的结果
+      placeholder: |
+        期望：加完之后左栏出现新的倒计时
+        实际：左栏没变，关掉设置再开又有了
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: debug.log 相关片段（可选，但很有效）
+      description: 位置 `%APPDATA%\ClassManager\debug.log`，贴出出问题时间点前后的几十行即可
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他补充（可选）
+      description: 截图（记得打码）、是否偶尔出现、换台电脑是否一样等
+    validations:
+      required: false

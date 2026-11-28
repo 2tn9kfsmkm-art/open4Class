@@ -1,0 +1,55 @@
+name: 功能建议
+description: 想加什么、想改什么交互
+title: "[建议] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        功能建议不需要写得很正式，但请说清楚「要解决什么问题」——
+        同样是「加个按钮」，背后的需求往往差别很大。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 现在哪里不顺手
+      description: 你实际遇到的场景，不要只写「希望能定时刷新」这种结论
+      placeholder: |
+        每天早读前要手动改一遍今天的课表，因为周一的课和实际不一样……
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你希望它怎么工作
+      description: 描述你脑子里的操作流程；画个草图也行
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative
+    attributes:
+      label: 现在怎么绕过去的（可选）
+      description: 现在的替代做法，能帮我们判断这个需求有多必要
+    validations:
+      required: false
+
+  - type: dropdown
+    id: who
+    attributes:
+      label: 谁会用到
+      options:
+        - 只有我们班
+        - 同类班级 / 别的学校应该也需要
+        - 只是我个人想要
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影响面（可选）
+      description: 你估计会动到哪些部分——界面、数据格式、打包、首次向导？
+    validations:
+      required: false
